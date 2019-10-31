@@ -78,15 +78,10 @@ def get_decayed_param_groups(named_parameters,
                              num_layers=None, 
                              lr=3e-5, 
                              lr_decay=0.75, #0.908517, 
-                             weight_decay=None, 
-                             freeze_transformer=False):
+                             weight_decay=None):
   lr_factors = []
   for k, v in named_parameters:
       if not v.requires_grad:
-        continue
-      if freeze_transformer and ('sentence_encoder.layers' in k or 'embed_tokens.weight' in k or 'embed_positions' in k):
-        print('no grad:', k)
-        v.requires_grad = False
         continue
       param = {
           'params': v,
@@ -106,7 +101,6 @@ def get_decayed_param_groups(named_parameters,
         param['weight_decay'] = 0.0 if 'layer_norm' in k or 'bias' in k else weight_decay
         
       lr_factors.append(param)
-      print(param)
   return lr_factors
       
       
@@ -266,7 +260,7 @@ class Trainer(object):
         ##############################################################################
         ##############################################################################
 
-        params = get_decayed_param_groups(chain(self.model.named_parameters(), self.criterion.named_parameters()), self.args.lr_decay_layers, lr_decay=self.args.lr_decay, freeze_transformer = self.args.freeze_transformer)
+        params = get_decayed_param_groups(chain(self.model.named_parameters(), self.criterion.named_parameters()), self.args.lr_decay_layers, lr_decay=self.args.lr_decay)
         '''
         params = list(
             filter(
@@ -982,19 +976,17 @@ def distributed_main(i, args, start_rank=0):
 
 def cli_main():
     parser = options.get_training_parser()
-##############################################################################
-##############################################################################
-####
-####   Added an argument
-####
-##############################################################################
-##############################################################################
+	##############################################################################
+	##############################################################################
+	####
+	####   Added an argument
+	####
+	##############################################################################
+	##############################################################################
     parser.add_argument('--lr_decay', default=1, type=float, 
                         help='Learning rate decay factor, 1.0 = no decay')
     parser.add_argument('--lr_decay_layers', default=24, type=int, 
                         help='Number of layers for learning rate decay')
-    parser.add_argument('--freeze_transformer', dest='freeze_transformer', action='store_true',
-                        help='Whether to freeze the weights in transformer')
     args = options.parse_args_and_arch(parser)
 
     if args.distributed_init_method is None:
@@ -1094,15 +1086,17 @@ from tqdm import tqdm
 import os
 
 
+
 # specially made for roberta
 from tokenizer.roberta import RobertaTokenizer, MASKED, NOT_MASKED, IS_MAX_CONTEXT, NOT_IS_MAX_CONTEXT
 from tokenizer.validate import validate
 
 
+
 roberta_directory = './roberta.large'
 
 
-max_seq_length   = 192
+max_seq_length   = 512
 max_query_length = 128
 doc_stride       = 128
 
@@ -1112,26 +1106,37 @@ get_tokenizer = lambda: RobertaTokenizer(config_dir=roberta_directory)
 tk = tokenizer =  get_tokenizer()
 
 
-#Data Utilities
+
+
+
+
+
+
+##############################################################################
+##############################################################################
+####
+####   Data Utilities
+####
+##############################################################################
+##############################################################################
 
 import marshal
 def read(dat):
-    a, b = marshal.loads(dat)
-    a = np.frombuffer(a, dtype=np.uint16).astype(np.int32)
-    b = np.frombuffer(b, dtype=np.uint16).astype(np.int32)
-    return a, b
+    uid, inp, start, end, p_mask, unanswerable = marshal.loads(dat)
+    inp = np.frombuffer(inp, dtype=np.uint16).astype(np.int32)
+    p_mask = np.frombuffer(p_mask, dtype=np.bool).astype(np.float32)
+    return uid, inp, start, end, p_mask, unanswerable
 
 def fread(f):
-    a, b = marshal.load(f)
-    #a = np.frombuffer(a, dtype=np.uint16).astype(np.int32)
-    #b = np.frombuffer(b, dtype=np.uint16).astype(np.int32)
-    return a, b
+    uid, inp, start, end, p_mask, unanswerable = marshal.load(f)
+    inp = np.frombuffer(inp, dtype=np.uint16).astype(np.int32)
+    p_mask = np.frombuffer(p_mask, dtype=np.bool).astype(np.float32)
+    return uid, inp, start, end, p_mask, unanswerable
             
-
+         
 def pad(list_of_tokens, 
         dtype=np.long,
         torch_tensor=None,
-        max_seq_length=max_seq_length,
         pad_idx=1):
     k = np.empty((len(list_of_tokens),max_seq_length), dtype=dtype)
     k.fill(pad_idx)
@@ -1153,7 +1158,8 @@ def chunks(l, n):
                 for _ in range(n):
                     out.append(next(it))
             except StopIteration:
-                yield out
+                if out:
+                    yield out
                 break
 
             yield out
@@ -1163,11 +1169,6 @@ def chunks(l, n):
             yield l[i:i + n]
 
 def from_records(records):
-    """
-    Args:
-        records (string): Path to the csv file with annotations.
-    """
-  
     fn_style = isinstance(records,str)
     if fn_style:
       def from_file(fn):
@@ -1184,11 +1185,14 @@ def from_records(records):
       
     prepared_records = []
     for record_samples in chunks(records,48):
-        a, b = zip(*record_samples) if fn_style else zip(*(read(record) for record in record_samples))
-        #a = pad(a,dtype=np.long, torch_tensor=torch.LongTensor)
-        #b = pad(b,dtype=np.long, torch_tensor=torch.LongTensor)
+        uid, inp, start, end, p_mask, unanswerable = zip(*record_samples) if fn_style else zip(*(read(record) for record in record_samples))
+        start = start
+        end = end
+        unanswerable = unanswerable
+        inp = pad(inp,dtype=np.long, torch_tensor=torch.LongTensor)
+        p_mask = pad(p_mask,dtype=np.float32, torch_tensor=torch.FloatTensor)
 
-        for e in zip(a,b):
+        for e in zip(inp, p_mask, start, end, unanswerable):
             yield e
 
 
@@ -1201,9 +1205,17 @@ def from_records(records):
 
 
 
+##############################################################################
+##############################################################################
+####
+####   modified from pytorch/fairseq/fairseq/model/roberta
+####
+##############################################################################
+##############################################################################
 
-@register_model('roberta_qa_embed')
-class RobertaQAEmbedModel(FairseqLanguageModel):
+
+@register_model('roberta_qa')
+class RobertaQAModel(FairseqLanguageModel):
 
     @classmethod
     def hub_models(cls):
@@ -1264,15 +1276,18 @@ class RobertaQAEmbedModel(FairseqLanguageModel):
         if not hasattr(args, 'max_positions'):
             args.max_positions = args.tokens_per_sample
 
-        encoder = RobertaQAEmbed(args, task.source_dictionary)
+        encoder = RobertaQAEncoder(args, task.source_dictionary)
         return cls(args, encoder)
 
-    def forward(self, q=None, a=None, return_loss=False, **kwargs):
+    def forward(self, src_tokens, features_only=False, return_all_hiddens=False, **kwargs):
 
-        x, extra = self.decoder(q, a, return_loss=return_loss, **kwargs)
+        x, extra = self.decoder(src_tokens, features_only, return_all_hiddens, **kwargs)
 
 
         return x, extra
+
+    #def register_qa_head(self, **kwargs):
+    #    self.qa_heads = RobertaQAHead(self.args)
 
     @property
     def supported_targets(self):
@@ -1294,22 +1309,7 @@ class RobertaQAEmbedModel(FairseqLanguageModel):
 
 
 
-
-from fairseq import utils
-
-class FnnLayer(nn.Module):
-    def __init__(self, hidden_size, activation_fn='gelu', dropout=0.2):
-        super(FnnLayer, self).__init__()
-        self.dense = nn.Linear(hidden_size, hidden_size)
-        self.activation = utils.get_activation_fn(activation_fn)
-        self.dropout = nn.Dropout(p=dropout)
-        
-    def forward(self, hidden_states):
-        return self.dropout(self.activation(self.dense(hidden_states))) + hidden_states
-
-
-
-class RobertaQAEmbed(FairseqDecoder):
+class RobertaQAEncoder(FairseqDecoder):
     """RoBERTa encoder.
     Implements the :class:`~fairseq.models.FairseqDecoder` interface required
     by :class:`~fairseq.models.FairseqLanguageModel`.
@@ -1334,68 +1334,16 @@ class RobertaQAEmbed(FairseqDecoder):
             apply_bert_init=True,
             activation_fn=args.activation_fn,
         )
-        #self.sentence_encoder.eval()
-        #for v in self.sentence_encoder.parameters():
-        #  v.requires_grad = False
-        hs = args.encoder_embed_dim
-        self.q_fnn_layer = FnnLayer(hs)
-        self.a_fnn_layer = FnnLayer(hs)
-        
-    def get_pooled_output_first_token_from_layers(self, x, layers=-4):
-        return torch.stack(self.sentence_encoder(x, last_state_only=False)[0][layers:]).mean(0)[0,:,:]
-    def get_pooled_output_first_token_from_last_layer(self, x):
-        return self.sentence_encoder(x, last_state_only=False)[0][-1].mean(0)[0,:,:]
-    def get_pooled_output_average_tokens_from_last_layer(self, x):
-        y = self.sentence_encoder(x, last_state_only=True)[0][-1]  #  B, T, C
-        return ( y * (1 - x.eq(self.sentence_encoder.padding_idx).unsqueeze(-1).type_as(y)) ).mean(1)
+        self.span_logits =  nn.Linear(args.encoder_embed_dim, 2)
 
-    def forward(self, q=None, a=None, return_loss=False, **kwargs):
-        has_q = q is not None
-        has_a = a is not None
-        if not has_q and not has_a:
-          raise Exception('??')
-        batch_size = q.size(0) if has_q else a.size(0)
-
-        if has_q:
-          q_embed = self.q_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(q))   # if average all tokens, needs : * 
-          #q_embed = q_embed / q_embed.norm(dim=1)[:,None]
-        if has_a:
-          a_embed = self.a_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(a))
-          #a_embed = a_embed / a_embed.norm(dim=1)[:,None]
-
-        outputs = () 
-
-        if return_loss:
-            if not (has_q and has_a):
-              raise Exception('Cannot calculate loss without both q and a')
+    def forward(self, src_tokens, features_only=False, return_all_hiddens=False, cls_index=None, **unused):
+        x, extra = self.extract_features(src_tokens, return_all_hiddens)
+        if not features_only:
+            start_logits, end_logits = self.span_logits(x).split(1, dim=-1)
+            x = (start_logits, end_logits)
             
             
-            similarity_matrix = torch.mm(q_embed,a_embed.t())
-            
-            targets = torch.arange(batch_size).cuda()   
-            
-            loss = torch.nn.functional.cross_entropy(similarity_matrix, targets)
-            
-            '''
-            q_embed_norm = q_embed / q_embed.norm(dim=1)[:,None]
-            a_embed_norm = a_embed / a_embed.norm(dim=1)[:,None]
-            
-            similarity_matrix = torch.mm(q_embed_norm,a_embed_norm.t())
-            
-            loss = ((torch.eye(q_hs.shape[0])*2-1) - similarity_matrix).norm(dim=1).mean()
-            '''
-            corrects = targets.eq(torch.argmax(similarity_matrix, axis=1)).sum()
-            targets.detach()
-            outputs = (loss,corrects)
-
-        else:
-            if has_q:
-              outputs = (q_embed,)
-              
-            if has_a:
-              outputs = outputs + (a_embed,)
-              
-        return outputs
+        return x, extra
 
     def extract_features(self, src_tokens, return_all_hiddens=False, **unused):
         inner_states, _ = self.sentence_encoder(
@@ -1410,7 +1358,7 @@ class RobertaQAEmbed(FairseqDecoder):
 
 
 
-@register_model_architecture('roberta_qa_embed', 'roberta_qa_embed')
+@register_model_architecture('roberta_qa', 'roberta_qa')
 def base_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
@@ -1426,7 +1374,7 @@ def base_architecture(args):
     args.pooler_dropout = getattr(args, 'pooler_dropout', 0.0)
 
 
-@register_model_architecture('roberta_qa_embed', 'roberta_qa_embed_large')
+@register_model_architecture('roberta_qa', 'roberta_qa_large')
 def roberta_large_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
@@ -1436,9 +1384,19 @@ def roberta_large_architecture(args):
 
 
 
+##############################################################################
+##############################################################################
+####
+####   modified from pytorch/fairseq/fairseq/tasks
+####
+##############################################################################
+##############################################################################
+
+
+
 from fairseq.data import BaseWrapperDataset
-@register_task('qa_embed')
-class QAEmbedTask(FairseqTask):
+@register_task('squad2')
+class SQuAD2Task(FairseqTask):
     """Task for training masked language models (e.g., BERT, RoBERTa)."""
 
     @staticmethod
@@ -1466,33 +1424,37 @@ class QAEmbedTask(FairseqTask):
         """
         path = self.args.data
 
-        questions = []
-        answers = []
+        tokens = []
+        starts = []
+        ends = []
         
         lengths = []
         
-        for q, a in tqdm(from_records(path)):
-            questions.append(q)
-            answers.append(a)
-            lengths.append(192)
+        for inp, p_mask, start, end, unanswerable in from_records(path):
+            tokens.append(inp)
+            lengths.append(len(inp))
+            starts.append(start)
+            ends.append(end)
             
         
-        questions = BaseWrapperDataset(questions)
-        answers = BaseWrapperDataset(answers)
+        tokens = BaseWrapperDataset(tokens)
+        starts = BaseWrapperDataset(np.array(starts, dtype=np.long))
+        ends = BaseWrapperDataset(np.array(ends, dtype=np.long))
         lengths = np.array(lengths, dtype=np.long)
 
-        print('| loaded {} batches [size:{}] from: {}'.format(len(lengths), max_seq_length, path))
+        print('| loaded {} batches from: {}'.format(len(lengths), path))
 
-        shuffle = np.arange(len(lengths))
+        shuffle = np.random.permutation(len(lengths))
 
         self.datasets[split] = SortDataset(
             NestedDictionaryDataset(
                 {
                     'id': IdDataset(),
-                    'questions': questions,
-                    'answers': answers,
+                    'tokens': tokens,
+                    'starts': starts,
+                    'ends': ends,
                     'nsentences': NumSamplesDataset(),
-                    'ntokens': NumelDataset(questions, reduce=True),
+                    'ntokens': NumelDataset(tokens, reduce=True),
                 },
                 sizes=[lengths],
             ),
@@ -1510,8 +1472,19 @@ class QAEmbedTask(FairseqTask):
         return self.dictionary
 
 
-@register_criterion('qa_embed')
-class QAEmbedCriterion(FairseqCriterion):
+
+##############################################################################
+##############################################################################
+####
+####   modified from pytorch/fairseq/fairseq/criterions
+####
+##############################################################################
+##############################################################################
+
+
+
+@register_criterion('squad2')
+class SQuAD2Criterion(FairseqCriterion):
 
     def __init__(self, args, task):
         super().__init__(args, task)
@@ -1533,40 +1506,46 @@ class QAEmbedCriterion(FairseqCriterion):
 
     def forward(self, model, sample, reduce=True):
         # compute loss and accuracy
-        questions = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['questions']]
-        answers = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['answers']]
+        tokens = sample['tokens']
+        start_positions = sample['starts']
+        end_positions = sample['ends']
+        #unanswerable = sample['unanswerables']
         
-        questions = pad(questions,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in questions)).cuda()
-        answers   = pad(answers,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in answers)).cuda()
-        
-        (loss, corrects) = model(questions, answers, return_loss=True)
+        (start_logits, end_logits), extra = model(tokens)
+        start_logits = start_logits.squeeze(-1)
+        end_logits = end_logits.squeeze(-1)
 
         
-        sample_size = questions.size(0) 
-        questions.detach()
-        answers.detach()
         
+        for x in (start_positions, end_positions):
+            if x is not None and x.dim() > 1:
+                x.squeeze_(-1)
+
+        loss_fct = CrossEntropyLoss()
+        start_loss = loss_fct(start_logits, start_positions)
+        end_loss = loss_fct(end_logits, end_positions)
+        total_loss = (start_loss + end_loss) / 2
+
+
+        sample_size = tokens.size(0) 
         logging_output = {
-            'loss': utils.item(loss.data) if reduce else loss.data,
-            'corrects': utils.item(corrects.data) if reduce else corrects.data,
+            'loss': utils.item(total_loss.data) if reduce else total_loss.data,
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'sample_size': sample_size,
         }
-        return loss, sample_size, logging_output
+        return total_loss, sample_size, logging_output
 
     @staticmethod
     def aggregate_logging_outputs(logging_outputs):
         """Aggregate logging outputs from data parallel training."""
         loss_sum = sum(log.get('loss', 0) for log in logging_outputs)
-        corrects = sum(log.get('corrects', 0) for log in logging_outputs)
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
 
         agg_output = {
             'loss': loss_sum / sample_size / math.log(2),
-            'accuracy': corrects / sample_size,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'sample_size': sample_size,
