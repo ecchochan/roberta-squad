@@ -1542,7 +1542,7 @@ class IMSFCriterion(FairseqCriterion):
         (start_logits, end_logits, cls_logits), extra = model(tokens)
         
         
-        for x in (start_positions, end_positions, labels):
+        for x in (start_logits, end_logits, cls_logits, start_positions, end_positions, labels):
             if x is not None and x.dim() > 1:
                 x.squeeze_(-1)
 
