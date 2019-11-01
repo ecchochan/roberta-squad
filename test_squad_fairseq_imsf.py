@@ -298,9 +298,9 @@ _PrelimPrediction = collections.namedtuple(  # pylint: disable=invalid-name
     "PrelimPrediction",
     ["feature_index", "start_index", "end_index",
     "start_log_prob", "end_log_prob", "this_paragraph_text",
-    "cur_null_score"])
+    "label"])
 _NbestPrediction = collections.namedtuple(  # pylint: disable=invalid-name
-    "NbestPrediction", ["text", "start_log_prob", "end_log_prob","cur_null_score"])
+    "NbestPrediction", ["text", "start_log_prob", "end_log_prob","label"])
 
 import math
 def _compute_softmax(scores):
@@ -355,7 +355,7 @@ roberta_single = RobertaQAModel.from_pretrained(roberta_directory, checkpoint_fi
 
 log_steps = 500
 num_epochs = 2
-max_seq_length = 512
+max_seq_length = 256
 num_cores = torch.cuda.device_count() # 8
 effective_batch_size = 64             # 8  bs per device
 update_freq = 1                       # 4  bs per device
@@ -457,6 +457,9 @@ def handle_prediction_by_qid(self,
   all_predictions_output = {}
   scores_diff_json = {}
   score = 0
+  score_label = 0
+  sf_count = 0
+  im_count = 0
   for qid, predictions in tqdm(prediction_by_qid.items()):
     q = orig_data[qid]
     ri = 0
@@ -468,13 +471,13 @@ def handle_prediction_by_qid(self,
       this_paragraph_text = paragraph_text[original_s:original_e]
       
       
-      cur_null_score = -1e6
+      #cur_null_score = -1e6
       
       sub_prelim_predictions = []
 
       if use_ans_class:
         start_top_log_probs, end_top_log_probs, cls_logits = result
-        cur_null_score = cls_logits.tolist()
+        label = cls_logits.argmax(0).tolist()
         
       else:
         start_top_log_probs, end_top_log_probs = result
@@ -521,7 +524,7 @@ def handle_prediction_by_qid(self,
                       start_log_prob=start_log_prob,
                       end_log_prob=end_log_prob,
                       this_paragraph_text=this_paragraph_text,
-                      cur_null_score=cur_null_score
+                      label=label
                   ))
               
         
@@ -541,7 +544,7 @@ def handle_prediction_by_qid(self,
 
       r = predictions[pred.feature_index][1]
       
-      cur_null_score = pred.cur_null_score
+      label = pred.label
 
       this_paragraph_text = pred.this_paragraph_text
 
@@ -569,7 +572,7 @@ def handle_prediction_by_qid(self,
             text=final_text,
             start_log_prob=pred.start_log_prob,
             end_log_prob=pred.end_log_prob,
-            cur_null_score=cur_null_score))
+            label=label))
 
 
 
@@ -577,7 +580,7 @@ def handle_prediction_by_qid(self,
         nbest.append(
           _NbestPrediction(text="", start_log_prob=-1e6,
           end_log_prob=-1e6,
-          cur_null_score=-1e6))
+          label=label))
 
     total_scores = []
     best_non_null_entry = None
@@ -587,8 +590,6 @@ def handle_prediction_by_qid(self,
       total_scores.append(entry.start_log_prob + entry.end_log_prob)
       if not best_non_null_entry:
         best_non_null_entry = entry
-        best_null_score = entry.cur_null_score if use_ans_class else -(entry.start_log_prob + entry.end_log_prob)
-        best_score_no_ans = entry.cur_null_score
 
     probs = _compute_softmax(total_scores)
 
@@ -601,18 +602,43 @@ def handle_prediction_by_qid(self,
       output["end_log_prob"] = entry.end_log_prob
       nbest_json.append(output)
 
-    s = compute_f1(q['answer_text'], best_non_null_entry.text if best_null_score < threshold else '')
-    all_predictions_output[qid] = [q['answer_text'], best_non_null_entry.text, best_null_score, s]
+    truth = q['answer_text'] if 'answer_text' in q else None
+    if 'answer_text' in q:
+        sf_count+=1
+    if 'label' in q:
+        im_count+=1
+
+    s = compute_f1(truth, best_non_null_entry.text) if truth is not None else None
+    all_predictions_output[qid] = [truth, best_non_null_entry.text, best_null_score, s]
     if debug:
-      ans = best_non_null_entry.text if best_null_score < threshold else '*No answer*'
-      truth = q['answer_text'] or '*No answer*'
+      ans = best_non_null_entry.text
+      label = best_non_null_entry.label
+      
+      truth_label = q['label'] if 'label' in q else None
+
+      if truth_label == 'contradiction':
+          truth_label = 0
+      elif truth_label == 'neutral':
+          truth_label = 1
+      elif truth_label == 'entailment':
+          truth_label = 2
+      elif truth_label is None:
+          pass
+      else:
+          raise
+
+
+      if truth_label is not None and truth_label == label:
+          score_label += 1
         
       if (not wrong_only or ans != truth):
         print('Q:', q['question'])
-        print('A:', ans, '(',best_null_score,')',  '[',best_score_no_ans,']', )
-        print('Truth:', truth)
+        print('A:', ans, '(',label,')')
+        print('Truth:', truth, '(',truth_label,')')
         print('')
-      score += s
+
+      if s is not None:
+        score += s
 
     assert len(nbest_json) >= 1
     assert best_non_null_entry is not None
@@ -623,7 +649,9 @@ def handle_prediction_by_qid(self,
   
   
   if debug:
-    print('score: ', score, '/', len(all_predictions), '=', score / len(all_predictions))
+    print('score: ', score, '/', sf_count, '=', score / sf_count)
+  
+    print('score_label: ', score_label, '/', im_count, '=', score_label / im_count)
   
   
   return nbest_json, all_predictions, scores_diff_json, all_predictions_output
@@ -631,8 +659,9 @@ def handle_prediction_by_qid(self,
   
 try:
   orig_data, prediction_by_qid = evaluate(eval_dir)
-  nbest_json, all_predictions, scores_diff_json, all_predictions_output = handle_prediction_by_qid(roberta_single, prediction_by_qid, debug=False, wrong_only=True)
+  nbest_json, all_predictions, scores_diff_json, all_predictions_output = handle_prediction_by_qid(roberta_single, prediction_by_qid, debug=True, wrong_only=True)
   
+  '''
   with open('all_predictions_output.json','w') as f:
     json.dump(all_predictions_output,f, separators=(',',':'))
   
@@ -645,6 +674,7 @@ try:
                                              na_prob_thresh=0, 
                                              out_file=None, 
                                              out_image_dir=None)
+                                             '''
 
 finally:
   import code
