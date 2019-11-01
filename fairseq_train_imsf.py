@@ -1381,7 +1381,7 @@ class RobertaIMSFEncoder(FairseqDecoder):
 
 
 
-@register_model_architecture('roberta_qa', 'roberta_qa')
+@register_model_architecture('roberta_imsf', 'roberta_imsf')
 def base_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
@@ -1397,7 +1397,7 @@ def base_architecture(args):
     args.pooler_dropout = getattr(args, 'pooler_dropout', 0.0)
 
 
-@register_model_architecture('roberta_qa', 'roberta_qa_large')
+@register_model_architecture('roberta_imsf', 'roberta_imsf_large')
 def roberta_large_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
