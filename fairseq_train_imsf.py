@@ -1322,7 +1322,7 @@ class PoolerAnswerClass(nn.Module):
 
 
         x = self.dropout(x)
-        x = self.dense_0(cls_token_state)
+        x = self.dense_0(x)
         x = self.activation(x)
         x = self.dropout(x)
         x = self.dense_1(x)
