@@ -1096,7 +1096,7 @@ from tokenizer.validate import validate
 roberta_directory = './roberta.large'
 
 
-max_seq_length   = 512
+max_seq_length   = 256
 max_query_length = 128
 doc_stride       = 128
 
