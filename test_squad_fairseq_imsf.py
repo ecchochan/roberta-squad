@@ -345,10 +345,10 @@ eval_model = sys.argv[1]
 eval_dir = sys.argv[2]
 
 
-from fairseq_train import RobertaQAModel
+from fairseq_train import RobertaIMSFModel
 from time import time
 roberta_directory = './roberta.large'
-roberta_single = RobertaQAModel.from_pretrained(roberta_directory, checkpoint_file=eval_model+'.pt', strict=True).model
+roberta_single = RobertaIMSFModel.from_pretrained(roberta_directory, checkpoint_file=eval_model+'.pt', strict=True).model
 
 
 
