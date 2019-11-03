@@ -298,9 +298,10 @@ _PrelimPrediction = collections.namedtuple(  # pylint: disable=invalid-name
     "PrelimPrediction",
     ["feature_index", "start_index", "end_index",
     "start_log_prob", "end_log_prob", "this_paragraph_text",
+    "cur_null_score",
     "label"])
 _NbestPrediction = collections.namedtuple(  # pylint: disable=invalid-name
-    "NbestPrediction", ["text", "start_log_prob", "end_log_prob","label"])
+    "NbestPrediction", ["text", "start_log_prob", "end_log_prob","cur_null_score","label"])
 
 import math
 def _compute_softmax(scores):
@@ -457,8 +458,10 @@ def handle_prediction_by_qid(self,
   all_predictions_output = {}
   scores_diff_json = {}
   score = 0
+  score_neg = 0
   score_label = 0
   sf_count = 0
+  sf_neg_count = 0
   im_count = 0
   for qid, predictions in tqdm(prediction_by_qid.items()):
     q = orig_data[qid]
@@ -475,12 +478,11 @@ def handle_prediction_by_qid(self,
       
       sub_prelim_predictions = []
 
-      if use_ans_class:
-        start_top_log_probs, end_top_log_probs, cls_logits = result
-        label = cls_logits.argmax(0).tolist()
-        
-      else:
-        start_top_log_probs, end_top_log_probs = result
+      
+      start_top_log_probs, end_top_log_probs, cls_logits = result
+      cur_null_score = (start_top_log_probs[:,0]+end_top_log_probs[:,0]).squeeze(-1).tolist()
+      label = cls_logits.argmax(0).tolist()
+      
         
       if True:
         start_top_log_probs = start_top_log_probs.cpu().detach().numpy()
@@ -524,6 +526,7 @@ def handle_prediction_by_qid(self,
                       start_log_prob=start_log_prob,
                       end_log_prob=end_log_prob,
                       this_paragraph_text=this_paragraph_text,
+                      cur_null_score=cur_null_score,
                       label=label
                   ))
               
@@ -572,6 +575,7 @@ def handle_prediction_by_qid(self,
             text=final_text,
             start_log_prob=pred.start_log_prob,
             end_log_prob=pred.end_log_prob,
+            cur_null_score=pred.cur_null_score,
             label=label))
 
 
@@ -580,6 +584,7 @@ def handle_prediction_by_qid(self,
         nbest.append(
           _NbestPrediction(text="", start_log_prob=-1e6,
           end_log_prob=-1e6,
+          cur_null_score=-1e6,
           label=label))
 
     total_scores = []
@@ -590,6 +595,7 @@ def handle_prediction_by_qid(self,
       total_scores.append(entry.start_log_prob + entry.end_log_prob)
       if not best_non_null_entry:
         best_non_null_entry = entry
+        best_null_score = entry.cur_null_score
 
     probs = _compute_softmax(total_scores)
 
@@ -604,15 +610,18 @@ def handle_prediction_by_qid(self,
 
     truth = q['answer_text'] if 'answer_text' in q else None
     if 'answer_text' in q:
-        sf_count+=1
+        if ans == '':
+            sf_neg_count =+ 1
+        else:
+            sf_count+=1
     if 'label' in q:
         im_count+=1
 
-    s = compute_f1(truth, best_non_null_entry.text) if truth is not None else None
-    all_predictions_output[qid] = [truth, best_non_null_entry.text, best_null_score, s]
+    ans = best_non_null_entry.text if best_null_score < -1.5
+    label = best_non_null_entry.label
+    s = compute_f1(truth, ans) if truth is not None else None
+    all_predictions_output[qid] = [truth, ans, best_null_score, s]
     if debug:
-      ans = best_non_null_entry.text
-      label = best_non_null_entry.label
       
       truth_label = q['label'] if 'label' in q else None
 
@@ -639,6 +648,8 @@ def handle_prediction_by_qid(self,
 
       if s is not None:
         score += s
+        if ans == '':
+            score_neg += s
 
     assert len(nbest_json) >= 1
     assert best_non_null_entry is not None
@@ -650,6 +661,8 @@ def handle_prediction_by_qid(self,
   
   if debug:
     print('score: ', score, '/', sf_count, '=', score / sf_count)
+  
+    print('score_neg: ', score_neg, '/', sf_neg_count, '=', score_neg / sf_neg_count)
   
     print('score_label: ', score_label, '/', im_count, '=', score_label / im_count)
   
@@ -677,5 +690,5 @@ try:
                                              '''
 
 finally:
-  import code
+  import code   
   code.interact(local=locals())
