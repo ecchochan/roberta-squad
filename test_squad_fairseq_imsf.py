@@ -480,7 +480,7 @@ def handle_prediction_by_qid(self,
 
       
       start_top_log_probs, end_top_log_probs, cls_logits = result
-      cur_null_score = (start_top_log_probs[:,0]+end_top_log_probs[:,0]).squeeze(-1).tolist()
+      cur_null_score = (start_top_log_probs[0]+end_top_log_probs[0]).squeeze(-1).tolist()
       label = cls_logits.argmax(0).tolist()
       
         
@@ -536,7 +536,7 @@ def handle_prediction_by_qid(self,
 
     prelim_predictions = sorted(
         prelim_predictions,
-        key=(lambda x: (x.start_log_prob + x.end_log_prob)),
+        key=(lambda x: (x.start_log_prob + x.end_log_prob - x.cur_null_score)),
         reverse=True)
 
     seen_predictions = {}
@@ -575,7 +575,7 @@ def handle_prediction_by_qid(self,
             text=final_text,
             start_log_prob=pred.start_log_prob,
             end_log_prob=pred.end_log_prob,
-            cur_null_score=pred.cur_null_score,
+            cur_null_score=pred.cur_null_score - pred.start_log_prob - pred.end_log_prob,
             label=label))
 
 
@@ -608,16 +608,16 @@ def handle_prediction_by_qid(self,
       output["end_log_prob"] = entry.end_log_prob
       nbest_json.append(output)
 
+    ans = best_non_null_entry.text if best_null_score < threshold else ''
     truth = q['answer_text'] if 'answer_text' in q else None
     if 'answer_text' in q:
-        if ans == '':
-            sf_neg_count =+ 1
+        if truth == '':
+            sf_neg_count += 1
         else:
             sf_count+=1
     if 'label' in q:
         im_count+=1
 
-    ans = best_non_null_entry.text if best_null_score < -1.5
     label = best_non_null_entry.label
     s = compute_f1(truth, ans) if truth is not None else None
     all_predictions_output[qid] = [truth, ans, best_null_score, s]
@@ -647,9 +647,10 @@ def handle_prediction_by_qid(self,
         print('')
 
       if s is not None:
-        score += s
-        if ans == '':
+        if truth == '':
             score_neg += s
+        else:
+            score += s
 
     assert len(nbest_json) >= 1
     assert best_non_null_entry is not None
