@@ -675,9 +675,8 @@ try:
   orig_data, prediction_by_qid = evaluate(eval_dir)
   nbest_json, all_predictions, scores_diff_json, all_predictions_output = handle_prediction_by_qid(roberta_single, prediction_by_qid, debug=True, wrong_only=True)
   
-  '''
-  with open('all_predictions_output.json','w') as f:
-    json.dump(all_predictions_output,f, separators=(',',':'))
+  #with open('all_predictions_output.json','w') as f:
+  #  json.dump(all_predictions_output,f, separators=(',',':'))
   
   from squad_evaluation import evaluate as squad_squad_evaluation
   with open(eval_dir, "r") as f:
@@ -688,6 +687,7 @@ try:
                                              na_prob_thresh=0, 
                                              out_file=None, 
                                              out_image_dir=None)
+  '''
                                              '''
 
 finally:
