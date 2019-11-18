@@ -1400,10 +1400,6 @@ class MNLICriterionHF(FairseqCriterion):
         
         cls_logits = result[1]
         total_loss = result[0]
-        
-        for x in (cls_logits,):
-            if x is not None and x.dim() > 1:
-                x.squeeze_(-1)
 
         preds = cls_logits.argmax(1)
 
