@@ -1405,7 +1405,7 @@ class MNLICriterionHF(FairseqCriterion):
             if x is not None and x.dim() > 1:
                 x.squeeze_(-1)
 
-        preds = cls_logits.view(-1, 3).argmax(1)
+        preds = cls_logits.argmax(1)
 
         sample_size = tokens.size(0) 
         logging_output = {
@@ -1413,7 +1413,7 @@ class MNLICriterionHF(FairseqCriterion):
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'sample_size': sample_size,
-            'ncorrect': (preds == labels.view(-1)).sum().item(),
+            'ncorrect': (preds == labels).sum().item(),
         }
         return total_loss, sample_size, logging_output
 
