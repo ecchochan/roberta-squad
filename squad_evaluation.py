@@ -19,15 +19,15 @@ def make_qid_to_has_ans(dataset):
         qid_to_has_ans[qa['id']] = bool(qa['answers'] if 'answers' in qa else qa['answer_text'])
   return qid_to_has_ans
 
+exclude = set(string.punctuation)
+remove_articles_regex = re.compile(r'\b(a|an|the)\b', re.UNICODE)
 def normalize_answer(s):
   """Lower text and remove punctuation, articles and extra whitespace."""
   def remove_articles(text):
-    regex = re.compile(r'\b(a|an|the)\b', re.UNICODE)
-    return re.sub(regex, ' ', text)
+    return remove_articles_regex.sub(' ', text)
   def white_space_fix(text):
     return ' '.join(text.split())
   def remove_punc(text):
-    exclude = set(string.punctuation)
     return ''.join(ch for ch in text if ch not in exclude)
   def lower(text):
     return text.lower()

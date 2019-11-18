@@ -1122,22 +1122,21 @@ tk = tokenizer =  get_tokenizer()
 
 import marshal
 def read(dat):
-    uid, inp, start, end, p_mask, label = marshal.loads(dat)
+    inp, label = marshal.loads(dat)
     inp = np.frombuffer(inp, dtype=np.uint16).astype(np.int32)
-    p_mask = np.frombuffer(p_mask, dtype=np.bool).astype(np.float32)
-    return uid, inp, start, end, p_mask, label
+    return inp, label
 
 def fread(f):
-    uid, inp, start, end, p_mask, label = marshal.load(f)
+    inp, label = marshal.load(f)
     inp = np.frombuffer(inp, dtype=np.uint16).astype(np.int32)
-    p_mask = np.frombuffer(p_mask, dtype=np.bool).astype(np.float32)
-    return uid, inp, start, end, p_mask, label
-            
+    return inp, label
+         
          
 def pad(list_of_tokens, 
         dtype=np.long,
         torch_tensor=None,
         pad_idx=1):
+    list_of_tokens = [e for e in list_of_tokens if len(list_of_tokens) <= max_seq_length]
     k = np.empty((len(list_of_tokens),max_seq_length), dtype=dtype)
     k.fill(pad_idx)
     i = 0
@@ -1185,15 +1184,11 @@ def from_records(records):
       
     prepared_records = []
     for record_samples in chunks(records,48):
-        uid, inp, start, end, p_mask, label = zip(*record_samples) if fn_style else zip(*(read(record) for record in record_samples))
+        inp, label = zip(*record_samples) if fn_style else zip(*(read(record) for record in record_samples))
         
-        start = start
-        end = end
-        label = label
         inp = pad(inp,dtype=np.long, torch_tensor=torch.LongTensor)
-        p_mask = pad(p_mask,dtype=np.float32, torch_tensor=torch.FloatTensor)
 
-        for e in zip(inp, p_mask, start, end, label):
+        for e in zip(inp, label):
             yield e
 
 
@@ -1215,8 +1210,8 @@ def from_records(records):
 ##############################################################################
 
 
-@register_model('roberta_imsf')
-class RobertaIMSFModel(FairseqLanguageModel):
+@register_model('roberta_mnli')
+class RobertaMNLIModel(FairseqLanguageModel):
 
     @classmethod
     def hub_models(cls):
@@ -1331,7 +1326,7 @@ class PoolerAnswerClass(nn.Module):
         return x
 
 
-class RobertaIMSFEncoder(FairseqDecoder):
+class RobertaMNLIEncoder(FairseqDecoder):
     """RoBERTa encoder.
     Implements the :class:`~fairseq.models.FairseqDecoder` interface required
     by :class:`~fairseq.models.FairseqLanguageModel`.
@@ -1356,15 +1351,13 @@ class RobertaIMSFEncoder(FairseqDecoder):
             apply_bert_init=True,
             activation_fn=args.activation_fn,
         )
-        self.span_logits =  nn.Linear(args.encoder_embed_dim, 2)
         self.answer_class = PoolerAnswerClass(args.encoder_embed_dim)
 
     def forward(self, src_tokens, features_only=False, return_all_hiddens=False, cls_index=None, **unused):
         x, extra = self.extract_features(src_tokens, return_all_hiddens)
         if not features_only:
-            start_logits, end_logits = self.span_logits(x).split(1, dim=-1)
             cls_logits = self.answer_class(x, cls_index=cls_index)
-            x = (start_logits, end_logits, cls_logits)
+            x = cls_logits
             
             
         return x, extra
@@ -1382,7 +1375,7 @@ class RobertaIMSFEncoder(FairseqDecoder):
 
 
 
-@register_model_architecture('roberta_imsf', 'roberta_imsf')
+@register_model_architecture('roberta_mnli', 'roberta_mnli')
 def base_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
@@ -1398,7 +1391,7 @@ def base_architecture(args):
     args.pooler_dropout = getattr(args, 'pooler_dropout', 0.0)
 
 
-@register_model_architecture('roberta_imsf', 'roberta_imsf_large')
+@register_model_architecture('roberta_mnli', 'roberta_mnli_large')
 def roberta_large_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
@@ -1419,8 +1412,8 @@ def roberta_large_architecture(args):
 
 
 from fairseq.data import BaseWrapperDataset
-@register_task('imsf')
-class IMSFTask(FairseqTask):
+@register_task('mnli')
+class MNLITask(FairseqTask):
     """Task for training masked language models (e.g., BERT, RoBERTa)."""
 
     @staticmethod
@@ -1446,7 +1439,7 @@ class IMSFTask(FairseqTask):
         Args:
             split (str): name of the split (e.g., train, valid, test)
         """
-        path = self.args.data
+        path = self.args.data +'_'+ split
 
         tokens = []
         starts = []
@@ -1455,17 +1448,13 @@ class IMSFTask(FairseqTask):
         
         lengths = []
         
-        for inp, p_mask, start, end, label in from_records(path):
+        for inp, label in from_records(path):
             tokens.append(inp)
             lengths.append(len(inp))
-            starts.append(start)
-            ends.append(end)
             labels.append(label)
             
         
         tokens = BaseWrapperDataset(tokens)
-        starts = BaseWrapperDataset(np.array(starts, dtype=np.long))
-        ends = BaseWrapperDataset(np.array(ends, dtype=np.long))
         lengths = np.array(lengths, dtype=np.long)
         labels = BaseWrapperDataset(np.array(labels, dtype=np.long))
 
@@ -1479,8 +1468,6 @@ class IMSFTask(FairseqTask):
                 {
                     'id': IdDataset(),
                     'tokens': tokens,
-                    'starts': starts,
-                    'ends': ends,
                     'labels': labels,
                     'nsentences': NumSamplesDataset(),
                     'ntokens': NumelDataset(tokens, reduce=True),
@@ -1512,8 +1499,8 @@ class IMSFTask(FairseqTask):
 
 
 
-@register_criterion('imsf')
-class IMSFCriterion(FairseqCriterion):
+@register_criterion('mnli')
+class MNLICriterion(FairseqCriterion):
 
     def __init__(self, args, task):
         super().__init__(args, task)
@@ -1536,30 +1523,21 @@ class IMSFCriterion(FairseqCriterion):
     def forward(self, model, sample, reduce=True):
         # compute loss and accuracy
         tokens = sample['tokens']
-        start_positions = sample['starts']
-        end_positions = sample['ends']
         labels = sample['labels']
         
-        (start_logits, end_logits, cls_logits), extra = model(tokens)
+        cls_logits, extra = model(tokens)
         
         
-        for x in (start_logits, end_logits, cls_logits, start_positions, end_positions, labels):
+        for x in (cls_logits, labels):
             if x is not None and x.dim() > 1:
                 x.squeeze_(-1)
 
-        loss_fct = CrossEntropyLoss()
-        start_loss = loss_fct(start_logits, start_positions)
-        end_loss = loss_fct(end_logits, end_positions)
-        total_loss = (start_loss + end_loss) / 2
-
-
-
         loss_fct_cls = CrossEntropyLoss()
-        cls_loss = loss_fct_cls(cls_logits.view(-1, 3), labels.view(-1))
+        total_loss = loss_fct_cls(cls_logits.view(-1, 3), labels.view(-1))
 
-        
-        total_loss += cls_loss
 
+
+        preds = logits.view(-1, 3).argmax(1)
 
         sample_size = tokens.size(0) 
         logging_output = {
@@ -1567,6 +1545,7 @@ class IMSFCriterion(FairseqCriterion):
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'sample_size': sample_size,
+            'ncorrect': (preds == labels.view(-1)).sum().item(),
         }
         return total_loss, sample_size, logging_output
 
@@ -1577,6 +1556,10 @@ class IMSFCriterion(FairseqCriterion):
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
+
+        if len(logging_outputs) > 0 and 'ncorrect' in logging_outputs[0]:
+            ncorrect = sum(log.get('ncorrect', 0) for log in logging_outputs)
+            agg_output.update(accuracy=ncorrect/nsentences)
 
         agg_output = {
             'loss': loss_sum / sample_size / math.log(2),
