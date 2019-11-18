@@ -1537,7 +1537,7 @@ class MNLICriterion(FairseqCriterion):
 
 
 
-        preds = logits.view(-1, 3).argmax(1)
+        preds = cls_logits.view(-1, 3).argmax(1)
 
         sample_size = tokens.size(0) 
         logging_output = {
