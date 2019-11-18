@@ -1293,7 +1293,7 @@ class MNLITask(FairseqTask):
         parser.add_argument('--default_choices', default='', type=str)
         #max_positions
 
-    def __init__(self, args, dictionary):
+    def __init__(self, args):
         super().__init__(args)
 
     @classmethod
