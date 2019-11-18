@@ -18,6 +18,7 @@ import os
 roberta_directory = './roberta.large'
 
 
+max_seq_length   = 512
 max_query_length = 128
 doc_stride       = 128
 merge_style      = 0
@@ -345,10 +346,10 @@ eval_model = sys.argv[1]
 eval_dir = sys.argv[2]
 
 
-from fairseq_train_mnli import RobertaMNLIModel
+from fairseq_train_imsf import RobertaIMSFModel
 from time import time
 roberta_directory = './roberta.large'
-roberta_single = RobertaMNLIModel.from_pretrained(roberta_directory, checkpoint_file=eval_model+'.pt', strict=True).model
+roberta_single = RobertaIMSFModel.from_pretrained(roberta_directory, checkpoint_file=eval_model+'.pt', strict=True).model
 
 
 
@@ -425,10 +426,12 @@ def evaluate(eval_dir):
   with torch.no_grad():
     for e, rs in tqdm(batches):
       inp, p_mask, start, end, _ = e
-       cls_logits, _ = roberta(inp.to(device=device))
+      (start_logits, end_logits, cls_logits), _ = roberta(inp.to(device=device))
+      start_logits = start_logits.squeeze(-1)
+      end_logits = end_logits.squeeze(-1)
 
     
-      for result, r in zip(cls_logits, rs):
+      for result, r in zip(zip(*(start_logits, end_logits, cls_logits)), rs):
         qid = r.qid
         if qid not in prediction_by_qid:
           prediction_by_qid[qid] = []
