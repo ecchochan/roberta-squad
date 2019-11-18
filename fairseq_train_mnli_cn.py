@@ -1223,7 +1223,7 @@ class RobertaMNLIModelHF(transformers.BertForSequenceClassification, BaseFairseq
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""
-        return RobertaQAModelHF(transformers.modeling_bert.BertConfig.from_json_file('/'.join(args.restore_file.split('/')[:-1]) + '/' + "config.json")	)
+        return RobertaMNLIModelHF(transformers.modeling_bert.BertConfig.from_json_file('/'.join(args.restore_file.split('/')[:-1]) + '/' + "config.json")	)
 
     @staticmethod
     def add_args(parser):
