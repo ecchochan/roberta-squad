@@ -1556,17 +1556,18 @@ class MNLICriterion(FairseqCriterion):
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
-
-        if len(logging_outputs) > 0 and 'ncorrect' in logging_outputs[0]:
-            ncorrect = sum(log.get('ncorrect', 0) for log in logging_outputs)
-            agg_output.update(accuracy=ncorrect/nsentences)
-
+        
         agg_output = {
             'loss': loss_sum / sample_size / math.log(2),
             'ntokens': ntokens,
             'nsentences': nsentences,
             'sample_size': sample_size,
         }
+
+        if len(logging_outputs) > 0 and 'ncorrect' in logging_outputs[0]:
+            ncorrect = sum(log.get('ncorrect', 0) for log in logging_outputs)
+            agg_output.update(accuracy=ncorrect/nsentences)
+
 
         return agg_output
         
