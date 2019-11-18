@@ -1272,7 +1272,7 @@ class RobertaMNLIModel(FairseqLanguageModel):
         if not hasattr(args, 'max_positions'):
             args.max_positions = args.tokens_per_sample
 
-        encoder = RobertaIMSFEncoder(args, task.source_dictionary)
+        encoder = RobertaMNLIEncoder(args, task.source_dictionary)
         return cls(args, encoder)
 
     def forward(self, src_tokens, features_only=False, return_all_hiddens=False, **kwargs):
