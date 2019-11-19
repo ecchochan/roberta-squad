@@ -233,9 +233,9 @@ def evaluate(eval_dir):
     for inp, labels in tqdm(batches):
       cls_logits = roberta(inp.to(device=device))[0]
 
-      preds = cls_logits.argmax(1)
+      preds = cls_logits.argmax(1).tolist()
 
-      ncorrect = (preds == labels).sum().item()
+      ncorrect = sum(a == b for a, b in zip(labels, preds))
 
       ncorrects += ncorrect
     
