@@ -1287,10 +1287,10 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
 
 
 @register_model('roberta_qa_embed_hf')
-class RobertaQAEmbedodelHF(transformers.BertForQAEmbed, BaseFairseqModel):
+class RobertaQAEmbedodelHF(BertForQAEmbed, BaseFairseqModel):
 
     def __init__(self, *args, **kwargs):
-        transformers.BertForQAEmbed.__init__(self, *args, **kwargs)
+        BertForQAEmbed.__init__(self, *args, **kwargs)
 
 
 
