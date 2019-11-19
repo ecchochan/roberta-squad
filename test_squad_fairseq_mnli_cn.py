@@ -221,11 +221,6 @@ roberta.eval()
   
 def evaluate(eval_dir):
   
-  records, rs = generate_tfrecord(eval_dir, is_training=False, parallel_process=True, return_feature=True)
-
-  records = records #[:100]
-  rs = rs #[:100]
-
 
   batches = from_records(eval_dir,batch_size, half=fp16, shuffle=False)
 
