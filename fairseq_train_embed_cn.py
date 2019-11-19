@@ -1334,7 +1334,7 @@ class RobertaQAEmbedodelHF(transformers.BertForQAEmbed, BaseFairseqModel):
 
 
 
-@register_model_architecture('roberta_mnli_hf', 'roberta_mnli_hf_large')
+@register_model_architecture('roberta_qa_embed_hf', 'roberta_qa_embed_hf_large')
 def roberta_large_architecture(args):
     pass
 
