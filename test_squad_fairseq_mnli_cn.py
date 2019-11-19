@@ -130,7 +130,7 @@ def from_records(records, batch_size = 48, half=False, shuffle=True):
       random.shuffle(records)
     for record_samples in chunks(records,batch_size):
         inp, label = zip(*record_samples) if fn_style else zip(*(read(record) for record in record_samples))
-        label = int(label)
+        
         inp = pad(inp,dtype=np.long, torch_tensor=torch.LongTensor)
 
         yield inp, label
