@@ -1344,6 +1344,10 @@ def roberta_large_architecture(args):
 
 
 
+class DummyDictionary():
+    def pad(self):
+        return 0
+
 from fairseq.data import BaseWrapperDataset
 @register_task('qa_embed_hf')
 class QAEmbedTask(FairseqTask):
