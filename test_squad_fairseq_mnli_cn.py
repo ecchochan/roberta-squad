@@ -159,11 +159,11 @@ import transformers
 from time import time
 
 import torch
-model = transformers.BertForSequenceClassification(transformers.modeling_bert.BertConfig.from_json_file("roberta.large.zh.wwm/config.json"))
+roberta_single = transformers.BertForSequenceClassification(transformers.modeling_bert.BertConfig.from_json_file("roberta.large.zh.wwm/config.json"))
 
 states = torch.load(eval_model)
 
-model.load_state_dict(states['model'])
+roberta_single.load_state_dict(states['model'])
 
 
 
