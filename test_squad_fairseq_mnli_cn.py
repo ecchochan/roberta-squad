@@ -63,6 +63,7 @@ def char_anchors_to_tok_pos(r):
         
     return a, b
 
+import marshal
 def read(dat):
     inp, label = marshal.loads(dat)
     inp = np.frombuffer(inp, dtype=np.uint16).astype(np.int32)
