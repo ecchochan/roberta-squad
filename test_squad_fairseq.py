@@ -521,7 +521,7 @@ def handle_prediction_by_qid(self,
                       start_log_prob=start_log_prob,
                       end_log_prob=end_log_prob,
                       this_paragraph_text=this_paragraph_text,
-                      cur_null_score=cur_null_score
+                      cur_null_score=cur_null_score - (start_log_prob + end_log_prob) / 2
                   ))
               
         
@@ -587,7 +587,7 @@ def handle_prediction_by_qid(self,
       total_scores.append(entry.start_log_prob + entry.end_log_prob)
       if not best_non_null_entry:
         best_non_null_entry = entry
-        best_null_score = entry.cur_null_score if use_ans_class else -(entry.start_log_prob + entry.end_log_prob)
+        best_null_score = entry.cur_null_score
         best_score_no_ans = entry.cur_null_score
 
     probs = _compute_softmax(total_scores)
