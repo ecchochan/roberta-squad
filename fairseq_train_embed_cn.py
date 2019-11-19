@@ -1224,7 +1224,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
         self.a_fnn_layer = FnnLayer(config.hidden_size)
 
         self.init_weights()
-'''
+        '''
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None, inputs_embeds=None,
                 next_sentence_label=None):
 
@@ -1241,7 +1241,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
             outputs = (next_sentence_loss,) + outputs
 
         return outputs  # (next_sentence_loss), seq_relationship_score, (hidden_states), (attentions)
-'''
+    '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         y = self.bert(x)[0]
         return ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
