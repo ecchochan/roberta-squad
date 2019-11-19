@@ -157,8 +157,13 @@ eval_dir = sys.argv[2]
 
 import transformers
 from time import time
-roberta_directory = './roberta.large.zh'
-roberta_single = transformers.BertForSequenceClassification.from_pretrained(roberta_directory)
+
+import torch
+model = transformers.BertForSequenceClassification(transformers.modeling_bert.BertConfig.from_json_file("roberta.large.zh.wwm/config.json"))
+
+states = torch.load(eval_model)
+
+model.load_state_dict(states['model'])
 
 
 
