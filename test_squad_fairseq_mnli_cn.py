@@ -1,7 +1,6 @@
 from torch import nn
 import argparse
 import torch
-from tokenizer.roberta import RobertaTokenizer, MASKED, NOT_MASKED, IS_MAX_CONTEXT, NOT_IS_MAX_CONTEXT, DocTokens
 from glob import glob
 import numpy as np
 import json
@@ -24,7 +23,9 @@ doc_stride       = 128
 merge_style      = 0
 
 default_choices = []
-get_tokenizer = lambda: RobertaTokenizer(config_dir=roberta_directory)
+from tokenizer.tokenization import BertTokenizer, translate_to_cn, char_anchors_to_tok_pos
+vocab_file = 'roberta.large.zh/vocab.txt'
+get_tokenizer = lambda: BertTokenizer(vocab_file)
 
 tk = tokenizer =  get_tokenizer()
 

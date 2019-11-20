@@ -631,7 +631,7 @@ def handle_prediction_by_qid(self,
   
 try:
   orig_data, prediction_by_qid = evaluate(eval_dir)
-  nbest_json, all_predictions, scores_diff_json, all_predictions_output = handle_prediction_by_qid(roberta_single, prediction_by_qid, debug=False, wrong_only=True)
+  nbest_json, all_predictions, scores_diff_json, all_predictions_output = handle_prediction_by_qid(roberta_single, prediction_by_qid, threshold=-6.1, debug=False, wrong_only=True)
   
   with open('all_predictions_output.json','w') as f:
     json.dump(all_predictions_output,f, separators=(',',':'))
