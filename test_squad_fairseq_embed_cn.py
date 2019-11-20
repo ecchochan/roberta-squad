@@ -141,8 +141,9 @@ import transformers
 from time import time
 
 import torch
+import fairseq_train_embed_cn
 from fairseq_train_embed_cn import BertForQAEmbed
-roberta_single = BertForQAEmbed(transformers.modeling_bert.BertConfig.from_json_file("roberta.large.zh.wwm/config.json"))
+roberta_single = BertForQAEmbed(transformers.modeling_bert.BertConfig.from_json_file("roberta.base.zh.wwm/config.json"))
 
 states = torch.load(eval_model)
 
