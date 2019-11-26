@@ -1247,7 +1247,6 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         y = self.bert(x)[0]
         #print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 142]) torch.Size([32, 142, 768])
-        print(x.eq(0).tolist())
         return ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
 
     def forward(self, q=None, a=None, return_loss=False, **kwargs):
