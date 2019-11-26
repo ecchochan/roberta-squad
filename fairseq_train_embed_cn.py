@@ -1131,7 +1131,7 @@ def pad(list_of_tokens,
         dtype=np.long,
         torch_tensor=None,
         max_seq_length=max_seq_length,
-        pad_idx=1):
+        pad_idx=0):
     k = np.empty((len(list_of_tokens),max_seq_length), dtype=dtype)
     k.fill(pad_idx)
     i = 0
@@ -1243,9 +1243,8 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         y = self.bert(x)[0]
-        ret = ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
-        print(ret.shape, x.shape, y.shape) # torch.Size([32, 192, 768])
-        return ret
+        #print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 142]) torch.Size([32, 142, 768])
+        return ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
 
     def forward(self, q=None, a=None, return_loss=False, **kwargs):
         has_q = q is not None
