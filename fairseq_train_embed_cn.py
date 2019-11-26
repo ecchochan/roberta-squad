@@ -1252,7 +1252,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         attention_mask = x.ne(0)
         y = self.bert(x,attention_mask=attention_mask)[0]
-        #print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 142]) torch.Size([32, 142, 768])
+        print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 142]) torch.Size([32, 142, 768])
         return ( y * (attention_mask.unsqueeze(-1).type_as(y)) ).mean(1)
 
     def forward(self, q=None, a=None, return_loss=False, **kwargs):
@@ -1278,7 +1278,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
             similarity_matrix = torch.mm(q_embed,a_embed.t())
             
             targets = torch.arange(batch_size).cuda()   
-            
+            print(q_embed.shape, a_embed.shape, similarity_matrix.shape, targets.shape)
             loss = torch.nn.functional.cross_entropy(similarity_matrix, targets)
             
             corrects = targets.eq(torch.argmax(similarity_matrix, axis=1)).sum()
