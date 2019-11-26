@@ -1099,6 +1099,13 @@ import os
 # specially made for roberta
 from tokenizer.roberta import RobertaTokenizer, MASKED, NOT_MASKED, IS_MAX_CONTEXT, NOT_IS_MAX_CONTEXT
 from tokenizer.validate import validate
+from tokenizer.tokenization import BertTokenizer, translate_to_cn, char_anchors_to_tok_pos
+
+vocab_file = 'roberta.large.zh.wwm/vocab.txt'
+get_tokenizer = lambda: BertTokenizer(vocab_file)
+
+
+tk = tokenizer =  get_tokenizer()
 
 
 roberta_directory = './roberta.large'
@@ -1251,7 +1258,6 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
 
         if has_q:
           q_embed = self.q_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(q))   # if average all tokens, needs : * 
-          print(q_embed)
           #q_embed = q_embed / q_embed.norm(dim=1)[:,None]
         if has_a:
           a_embed = self.a_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(a))
@@ -1264,9 +1270,6 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
               raise Exception('Cannot calculate loss without both q and a')
             
             similarity_matrix = torch.mm(q_embed,a_embed.t())
-            print(similarity_matrix)
-            print()
-            print()
             
             targets = torch.arange(batch_size).cuda()   
             
@@ -1459,6 +1462,9 @@ class QAEmbedCriterion(FairseqCriterion):
         # compute loss and accuracy
         questions = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['questions']]
         answers = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['answers']]
+
+        print(''.join(tokenizer.convert_ids_to_tokens(questions[0])))
+        print(''.join(tokenizer.convert_ids_to_tokens(answers[0])))
         
         questions = pad(questions,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in questions)).cuda()
         answers   = pad(answers,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in answers)).cuda()
