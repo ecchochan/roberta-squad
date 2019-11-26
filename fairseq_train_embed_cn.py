@@ -106,7 +106,6 @@ def get_decayed_param_groups(named_parameters,
         param['weight_decay'] = 0.0 if 'layer_norm' in k or 'bias' in k else weight_decay
         
       lr_factors.append(param)
-      print(param)
   return lr_factors
       
       
@@ -1244,8 +1243,9 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         y = self.bert(x)[0]
-        print(y.shape)
-        return ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
+        ret = ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
+        print(ret.shape, x.shape, y.shape) # torch.Size([32, 192, 768])
+        return ret
 
     def forward(self, q=None, a=None, return_loss=False, **kwargs):
         has_q = q is not None
