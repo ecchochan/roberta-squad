@@ -1328,9 +1328,22 @@ class RobertaQAEmbedodelHF(BertForQAEmbed, BaseFairseqModel):
 
 
 
-@register_model_architecture('roberta_qa_embed_hf', 'roberta_qa_embed_hf_large')
-def roberta_large_architecture(args):
-    pass
+@register_model_architecture('roberta_qa_embed_hf', 'roberta_qa_embed_hf_base')
+def base_architecture(args):
+    args.encoder_layers = getattr(args, 'encoder_layers', 12)
+    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 3072)
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 12)
+
+    args.activation_fn = getattr(args, 'activation_fn', 'gelu')
+    args.pooler_activation_fn = getattr(args, 'pooler_activation_fn', 'tanh')
+
+    args.dropout = getattr(args, 'dropout', 0.1)
+    args.attention_dropout = getattr(args, 'attention_dropout', 0.1)
+    args.activation_dropout = getattr(args, 'activation_dropout', 0.0)
+    args.pooler_dropout = getattr(args, 'pooler_dropout', 0.0)
+
+
 
 
 
@@ -1471,7 +1484,6 @@ class QAEmbedCriterion(FairseqCriterion):
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
 
-        print(corrects, '/', sample_size)
         agg_output = {
             'loss': loss_sum / sample_size / math.log(2),
             'accuracy': corrects / sample_size,
