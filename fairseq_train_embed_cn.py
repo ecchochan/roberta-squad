@@ -102,9 +102,12 @@ def get_decayed_param_groups(named_parameters,
           factor = lr_decay**(num_layers-layer)
 
         param['lr'] = lr * factor
+        print('decay x %s:'%factor, k, )
       if weight_decay and weight_decay != 0:
         param['weight_decay'] = 0.0 if 'layer_norm' in k or 'bias' in k else weight_decay
         
+
+
       lr_factors.append(param)
   return lr_factors
       
