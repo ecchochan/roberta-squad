@@ -1485,7 +1485,7 @@ class SQuAD2Criterion(FairseqCriterion):
         end_positions = sample['ends']
         unanswerable = sample['unanswerables']
         
-        (start_logits, end_logits, cls_logits), extra = model(tokens)
+        (start_logits, end_logits, cls_logits), extra = model(tokens, attention_mask=tokens.ne(0))
         start_logits = start_logits.squeeze(-1)
         end_logits = end_logits.squeeze(-1)
 

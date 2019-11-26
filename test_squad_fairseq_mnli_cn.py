@@ -232,7 +232,7 @@ def evaluate(eval_dir):
   
   with torch.no_grad():
     for inp, labels in tqdm(batches):
-      cls_logits = roberta(inp.to(device=device))[0]
+      cls_logits = roberta(inp.to(device=device), attention_mask=inp.ne(0))[0]
 
       preds = cls_logits.argmax(1).tolist()
 
