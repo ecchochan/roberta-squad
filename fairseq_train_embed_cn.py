@@ -1283,7 +1283,6 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
             loss = torch.nn.functional.cross_entropy(similarity_matrix, targets)
             
             corrects = targets.eq(torch.argmax(similarity_matrix, axis=1)).sum()
-            targets.detach()
             outputs = (loss,corrects)
 
         else:
