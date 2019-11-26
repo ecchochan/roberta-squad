@@ -1230,7 +1230,12 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None, inputs_embeds=None,
                 next_sentence_label=None):
 
-        outputs = 
+        outputs = self.bert(input_ids,
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids,
+                            position_ids=position_ids,
+                            head_mask=head_mask,
+                            inputs_embeds=inputs_embeds)
 
         pooled_output = outputs[1]
 
@@ -1245,9 +1250,10 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
         return outputs  # (next_sentence_loss), seq_relationship_score, (hidden_states), (attentions)
     '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
-        y = self.bert(x)[0]
+        attention_mask = x.eq(0)
+        y = self.bert(x,attention_mask=attention_mask)[0]
         #print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 142]) torch.Size([32, 142, 768])
-        return ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
+        return ( y * (1 - attention_mask.unsqueeze(-1).type_as(y)) ).mean(1)
 
     def forward(self, q=None, a=None, return_loss=False, **kwargs):
         has_q = q is not None
@@ -1463,13 +1469,13 @@ class QAEmbedCriterion(FairseqCriterion):
         questions = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['questions']]
         answers = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['answers']]
 
+        sample_size = len(questions)
         questions = pad(questions,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in questions)).cuda()
         answers   = pad(answers,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in answers)).cuda()
         
         (loss, corrects) = model(questions, answers, return_loss=True)
 
         
-        sample_size = questions.size(0) 
         questions.detach()
         answers.detach()
         
