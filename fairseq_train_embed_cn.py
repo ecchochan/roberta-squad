@@ -1248,11 +1248,9 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
 
         if has_q:
           q_embed = self.q_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(q))   # if average all tokens, needs : * 
-          print('q_embed:', q_embed.shape)
           #q_embed = q_embed / q_embed.norm(dim=1)[:,None]
         if has_a:
           a_embed = self.a_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(a))
-          print('a_embed:', a_embed.shape)
           #a_embed = a_embed / a_embed.norm(dim=1)[:,None]
 
         outputs = () 
@@ -1262,7 +1260,6 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
               raise Exception('Cannot calculate loss without both q and a')
             
             similarity_matrix = torch.mm(q_embed,a_embed.t())
-            print('similarity_matrix:', similarity_matrix.shape)
             
             targets = torch.arange(batch_size).cuda()   
             
@@ -1471,6 +1468,7 @@ class QAEmbedCriterion(FairseqCriterion):
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
 
+        print(corrects, '/', sample_size)
         agg_output = {
             'loss': loss_sum / sample_size / math.log(2),
             'accuracy': corrects / sample_size,
