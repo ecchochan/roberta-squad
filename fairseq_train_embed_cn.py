@@ -1244,6 +1244,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         y = self.bert(x)[0]
+        print(y.shape)
         return ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
 
     def forward(self, q=None, a=None, return_loss=False, **kwargs):
@@ -1291,8 +1292,6 @@ class RobertaQAEmbedodelHF(BertForQAEmbed, BaseFairseqModel):
 
     def __init__(self, *args, **kwargs):
         BertForQAEmbed.__init__(self, *args, **kwargs)
-
-
 
     @classmethod
     def build_model(cls, args, task):

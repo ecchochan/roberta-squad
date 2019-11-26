@@ -440,7 +440,7 @@ def evaluate(eval_dir):
   return orig_data, prediction_by_qid
   
 
-from squad_evaluation import compute_f1
+from squad_evaluation import compute_f1, normalize_answer
 
 def handle_prediction_by_qid(self, 
                              prediction_by_qid, 
@@ -464,21 +464,14 @@ def handle_prediction_by_qid(self,
     for result, r in predictions:
       paragraph_text = r.original_text
       original_s, original_e = r.original_text_span # exclusive
-
       this_paragraph_text = paragraph_text[original_s:original_e]
-      
-      
       cur_null_score = -1e6
-      
       sub_prelim_predictions = []
-
       if use_ans_class:
         start_top_log_probs, end_top_log_probs, cls_logits = result
         cur_null_score = cls_logits.tolist()
-        
       else:
         start_top_log_probs, end_top_log_probs = result
-        
       if True:
         start_top_log_probs = start_top_log_probs.cpu().detach().numpy()
         end_top_log_probs = end_top_log_probs.cpu().detach().numpy()
@@ -496,23 +489,15 @@ def handle_prediction_by_qid(self,
                 continue
               seg_s = r.segments[start_index]
               seg_e = r.segments[end_index]
-
               if seg_s != seg_e:
                 continue
-
               if r.is_max_context[start_index] == 0 :
                 continue
-
               length = end_index - start_index + 1
               if length > max_answer_length:
                 continue
-                
-                
-
               start_log_prob = start_top_log_probs[start_index]
               end_log_prob = end_top_log_probs[end_index]
-
-
               sub_prelim_predictions.append(
                   _PrelimPrediction(
                       feature_index=ri,
@@ -521,64 +506,43 @@ def handle_prediction_by_qid(self,
                       start_log_prob=start_log_prob,
                       end_log_prob=end_log_prob,
                       this_paragraph_text=this_paragraph_text,
-                      cur_null_score=cur_null_score - (start_log_prob + end_log_prob) / 2
+                      cur_null_score=cur_null_score
                   ))
-              
-        
       prelim_predictions.extend(sub_prelim_predictions)
       ri += 1
-
     prelim_predictions = sorted(
         prelim_predictions,
         key=(lambda x: (x.start_log_prob + x.end_log_prob)),
         reverse=True)
-
     seen_predictions = {}
     nbest = []
     for pred in prelim_predictions:
       if len(nbest) >= n_best_size:
           break
-
       r = predictions[pred.feature_index][1]
-      
       cur_null_score = pred.cur_null_score
-
       this_paragraph_text = pred.this_paragraph_text
-
       s,e = pred.start_index, pred.end_index  # e is inclusive
-
       char_s  = r.tok_to_char_offset[s]
       char_e  = r.tok_to_char_offset[e]  # inclusive
       char_e += len(r.all_text_tokens[r.char_to_tok_offset[char_e]])
-
-
       final_text = r.text[char_s:char_e].strip() # this_paragraph_text[char_s:char_e]
-
-        
       if False:
         print(final_text, '>>', r.all_text_tokens[s:e+1])
-
       if final_text in seen_predictions:
           continue
-          
-
       seen_predictions[final_text] = True
-
       nbest.append(
         _NbestPrediction(
             text=final_text,
             start_log_prob=pred.start_log_prob,
             end_log_prob=pred.end_log_prob,
             cur_null_score=cur_null_score))
-
-
-
     if len(nbest) == 0:
         nbest.append(
           _NbestPrediction(text="", start_log_prob=-1e6,
           end_log_prob=-1e6,
           cur_null_score=-1e6))
-
     total_scores = []
     best_non_null_entry = None
     best_null_score = None
@@ -589,9 +553,7 @@ def handle_prediction_by_qid(self,
         best_non_null_entry = entry
         best_null_score = entry.cur_null_score
         best_score_no_ans = entry.cur_null_score
-
     probs = _compute_softmax(total_scores)
-
     nbest_json = []
     for (i, entry) in enumerate(nbest):
       output = collections.OrderedDict()
@@ -600,32 +562,22 @@ def handle_prediction_by_qid(self,
       output["start_log_prob"] = entry.start_log_prob
       output["end_log_prob"] = entry.end_log_prob
       nbest_json.append(output)
-
-    s = compute_f1(q['answer_text'], best_non_null_entry.text if best_null_score < threshold else '')
+    s = compute_f1(normalize_answer(q['answer_text']), normalize_answer(best_non_null_entry.text) if best_null_score < threshold else '')
     all_predictions_output[qid] = [q['answer_text'], best_non_null_entry.text, best_null_score, s]
     if debug:
-      ans = best_non_null_entry.text if best_null_score < threshold else '*No answer*'
-      truth = q['answer_text'] or '*No answer*'
-        
+      ans = normalize_answer(best_non_null_entry.text) if best_null_score < threshold else '*No answer*'
+      truth = normalize_answer(q['answer_text']) or '*No answer*'
       if (not wrong_only or ans != truth):
         print('Q:', q['question'])
         print('A:', ans, '(',best_null_score,')',  '[',best_score_no_ans,']', )
         print('Truth:', truth)
         print('')
       score += s
-
     assert len(nbest_json) >= 1
     assert best_non_null_entry is not None
-
-
     all_predictions[qid] = best_non_null_entry.text
     scores_diff_json[qid] = best_null_score
-  
-  
-  if debug:
-    print('score: ', score, '/', len(all_predictions), '=', score / len(all_predictions))
-  
-  
+  print('score: ', score, '/', len(all_predictions), '=', score / len(all_predictions))
   return nbest_json, all_predictions, scores_diff_json, all_predictions_output
 
   
