@@ -1396,7 +1396,7 @@ class MNLICriterionHF(FairseqCriterion):
         tokens = sample['tokens']
         labels = sample['labels']
         
-        result = model(tokens, labels=labels)
+        result = model(tokens, attention_mask=tokens.ne(0), labels=labels)
         
         cls_logits = result[1]
         total_loss = result[0]

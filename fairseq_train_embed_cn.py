@@ -1251,10 +1251,10 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         attention_mask = x.ne(0)
-        y = self.bert(x,attention_mask=attention_mask)[0]
-        ret = ( y * (attention_mask.unsqueeze(-1).type_as(y)) ).mean(1)
+        y = self.bert(x,attention_mask=attention_mask)[1]
+        #ret = ( y * (attention_mask.unsqueeze(-1).type_as(y)) ).mean(1)
         #print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 192]) torch.Size([32, 192, 768])
-        return ret
+        return y
 
     def forward(self, q=None, a=None, return_loss=False, **kwargs):
         has_q = q is not None
