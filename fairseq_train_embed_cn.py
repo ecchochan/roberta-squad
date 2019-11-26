@@ -94,7 +94,7 @@ def get_decayed_param_groups(named_parameters,
       if lr_decay and lr_decay != 1:
         factor = 1
         if 'sentence_encoder.layers' in k or '.encoder.layer.' in k:
-          layer = int(re.search(r'.layers.(\d+)',k).group(1))
+          layer = int(re.search(r'.layers?.(\d+)',k).group(1))
           factor = lr_decay**(num_layers-layer)
 
         elif 'embed_tokens.weight' in k or 'embed_positions' in k or '.embeddings.' in k:
