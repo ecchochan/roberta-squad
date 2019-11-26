@@ -1239,7 +1239,6 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         y = self.bert(x)[0]
-        print(x)
         #print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 142]) torch.Size([32, 142, 768])
         return ( y * (1 - x.eq(0).unsqueeze(-1).type_as(y)) ).mean(1)
 
@@ -1252,6 +1251,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
 
         if has_q:
           q_embed = self.q_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(q))   # if average all tokens, needs : * 
+          print(q_embed)
           #q_embed = q_embed / q_embed.norm(dim=1)[:,None]
         if has_a:
           a_embed = self.a_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(a))
@@ -1264,6 +1264,9 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
               raise Exception('Cannot calculate loss without both q and a')
             
             similarity_matrix = torch.mm(q_embed,a_embed.t())
+            print(similarity_matrix)
+            print()
+            print()
             
             targets = torch.arange(batch_size).cuda()   
             
