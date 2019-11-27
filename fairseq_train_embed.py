@@ -1483,7 +1483,8 @@ class QAEmbedTask(FairseqTask):
 
         print('| loaded {} batches [size:{}] from: {}'.format(len(lengths), max_seq_length, path))
 
-        shuffle = np.arange(len(lengths))
+        #shuffle = np.arange(len(lengths))
+        shuffle = np.random.permutation(len(lengths))
 
         self.datasets[split] = SortDataset(
             NestedDictionaryDataset(
