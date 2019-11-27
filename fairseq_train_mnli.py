@@ -781,8 +781,11 @@ def main(args, init_distributed=False):
         train(args, trainer, task, epoch_itr)
 
         if not args.disable_validation and epoch_itr.epoch % args.validate_interval == 0:
+            print('VALIDATING !!!!!!')
             valid_losses = validate(args, trainer, task, epoch_itr, valid_subsets)
+            print('VALIDATed !!!!!!', valid_losses)
         else:
+            print('NO VALIDATING !!!!!!')
             valid_losses = [None]
 
         # only use first validation loss to update the learning rate
@@ -1147,7 +1150,7 @@ def pad(list_of_tokens,
         dtype=np.long,
         torch_tensor=None,
         pad_idx=1):
-    k = np.empty((len(list_of_tokens),max_seq_length), dtype=dtype)
+    k = np.empty((len(list_of_tokens),max([len(e) for e in list_of_tokens])), dtype=dtype)
     k.fill(pad_idx)
     i = 0
     for tokens in list_of_tokens:
