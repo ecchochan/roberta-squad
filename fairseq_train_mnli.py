@@ -1154,7 +1154,7 @@ def pad(list_of_tokens,
         dtype=np.long,
         torch_tensor=None,
         pad_idx=1):
-    k = np.empty((len(list_of_tokens),max([len(e) for e in list_of_tokens])), dtype=dtype)
+    k = np.empty((len(list_of_tokens),max_seq_length), dtype=dtype)
     k.fill(pad_idx)
     i = 0
     for tokens in list_of_tokens:
