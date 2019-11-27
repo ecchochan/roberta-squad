@@ -311,36 +311,25 @@ class Trainer(object):
         """Load all training state from a checkpoint file."""
         extra_state, self._optim_history, last_optim_state = None, [], None
 
-        if os.path.exists(filename):
+        try:
+            from fairseq.fb_pathmgr import fb_pathmgr
+            bexists = fb_pathmgr.isfile(filename)
+        except (ModuleNotFoundError, ImportError):
+            bexists = os.path.exists(filename)
+
+        if bexists:
             state = checkpoint_utils.load_checkpoint_to_cpu(filename)
 
             # load model parameters
             try:
-                self.get_model().load_state_dict(state['model'], strict=True)
+                self.get_model().load_state_dict(state['model'], strict=True, args=self.args)
                 if utils.has_parameters(self.get_criterion()):
                     self.get_criterion().load_state_dict(state['criterion'], strict=True)
-            except Exception as e:
-
-                ##############################################################################
-                ##############################################################################
-                ####
-                ####   Lazy Hack... 
-                ####
-                ##############################################################################
-                ##############################################################################
-
-                print(
-                    e, 
+            except Exception:
+                raise Exception(
                     'Cannot load model parameters from checkpoint {}; '
                     'please ensure that the architectures match.'.format(filename)
                 )
-                try:
-                    print('!!! Training Continued Ignoring The Above Error !!!')
-                    self.get_model().load_state_dict(state['model'], strict=False)
-                    if utils.has_parameters(self.get_criterion()):
-                        self.get_criterion().load_state_dict(state['criterion'], strict=False)
-                except:
-                    raise Exception('version is %s'%(sys.version_info, ))
 
             extra_state = state['extra_state']
             self._optim_history = state['optimizer_history']
@@ -382,27 +371,6 @@ class Trainer(object):
             print('| no existing checkpoint found {}'.format(filename))
 
         return extra_state
-
-    def get_train_iterator(self, epoch, combine=True):
-        """Return an EpochBatchIterator over the training set for a given epoch."""
-        print('| loading train data for epoch {}'.format(epoch))
-        self.task.load_dataset(self.args.train_subset, epoch=epoch, combine=combine)
-        return self.task.get_batch_iterator(
-            dataset=self.task.dataset(self.args.train_subset),
-            max_tokens=self.args.max_tokens,
-            max_sentences=self.args.max_sentences,
-            max_positions=utils.resolve_max_positions(
-                self.task.max_positions(),
-                self.model.max_positions(),
-            ),
-            ignore_invalid_inputs=True,
-            required_batch_size_multiple=self.args.required_batch_size_multiple,
-            seed=self.args.seed,
-            num_shards=self.args.distributed_world_size,
-            shard_id=self.args.distributed_rank,
-            num_workers=self.args.num_workers,
-            epoch=epoch,
-        )
 
     def train_step(self, samples, dummy_batch=False, raise_oom=False):
         """Do forward, backward and parameter update."""

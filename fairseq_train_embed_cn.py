@@ -1283,6 +1283,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
             loss = torch.nn.functional.cross_entropy(similarity_matrix, targets)
             
             corrects = targets.eq(torch.argmax(similarity_matrix, axis=1)).sum()
+            targets.detach()
             outputs = (loss,corrects)
 
         else:
@@ -1468,6 +1469,9 @@ class QAEmbedCriterion(FairseqCriterion):
         # compute loss and accuracy
         questions = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['questions']]
         answers = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['answers']]
+
+        print(''.join(tk.convert_ids_to_tokens(questions[0])))
+        print(''.join(tk.convert_ids_to_tokens(answers[0])))
 
         sample_size = len(questions)
         questions = pad(questions,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in questions)).cuda()
