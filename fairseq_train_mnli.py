@@ -389,6 +389,32 @@ class Trainer(object):
 
         return extra_state
 
+    def get_train_iterator(self, epoch, combine=True, load_dataset=True, data_selector=None, shard_batch_itr=True):
+        """Return an EpochBatchIterator over the training set for a given epoch."""
+        if load_dataset:
+            print('| loading train data for epoch {}'.format(epoch))
+            self.task.load_dataset(
+                self.args.train_subset,
+                epoch=epoch,
+                combine=combine,
+                data_selector=data_selector,
+            )
+        return self.task.get_batch_iterator(
+            dataset=self.task.dataset(self.args.train_subset),
+            max_tokens=self.args.max_tokens,
+            max_sentences=self.args.max_sentences,
+            max_positions=utils.resolve_max_positions(
+                self.task.max_positions(),
+                self.model.max_positions(),
+            ),
+            ignore_invalid_inputs=True,
+            required_batch_size_multiple=self.args.required_batch_size_multiple,
+            seed=self.args.seed,
+            num_shards=self.args.distributed_world_size if shard_batch_itr else 1,
+            shard_id=self.args.distributed_rank if shard_batch_itr else 0,
+            num_workers=self.args.num_workers,
+            epoch=epoch,
+        )
     def train_step(self, samples, dummy_batch=False, raise_oom=False):
         """Do forward, backward and parameter update."""
         if self._dummy_batch is None:
