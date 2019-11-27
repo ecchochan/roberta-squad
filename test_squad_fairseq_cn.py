@@ -354,8 +354,14 @@ logger.setLevel(logging.INFO)
 
 import transformers
 from time import time
-roberta_directory = './roberta.large.zh'
-roberta_single = transformers.BertForQuestionAnswering.from_pretrained(roberta_directory)
+
+roberta_single = transformers.BertForQuestionAnswering(transformers.modeling_bert.BertConfig.from_json_file("roberta.base.zh.wwm/config.json"))
+
+states = torch.load(eval_model)
+
+roberta_single.load_state_dict(states['model'])
+
+
 
 
 
