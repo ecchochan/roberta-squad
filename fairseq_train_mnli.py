@@ -777,6 +777,10 @@ def main(args, init_distributed=False):
     train_meter.start()
     valid_subsets = args.valid_subset.split(',')
     while lr > args.min_lr and epoch_itr.epoch < max_epoch and trainer.get_num_updates() < max_update:
+        print('epoch_itr.epoch:', epoch_itr.epoch)
+        print('max_epoch:', max_epoch)
+        print('args.validate_interval:', args.validate_interval)
+        print('args.disable_validation:', args.disable_validation)
         # train for one epoch
         train(args, trainer, task, epoch_itr)
 
