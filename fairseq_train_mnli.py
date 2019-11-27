@@ -314,23 +314,40 @@ class Trainer(object):
         try:
             from fairseq.fb_pathmgr import fb_pathmgr
             bexists = fb_pathmgr.isfile(filename)
-        except (ModuleNotFoundError, ImportError):
+        except (ImportError):
             bexists = os.path.exists(filename)
 
         if bexists:
             state = checkpoint_utils.load_checkpoint_to_cpu(filename)
 
+
             # load model parameters
             try:
-                self.get_model().load_state_dict(state['model'], strict=True, args=self.args)
+                self.get_model().load_state_dict(state['model'], strict=True)
                 if utils.has_parameters(self.get_criterion()):
                     self.get_criterion().load_state_dict(state['criterion'], strict=True)
-            except Exception:
-                raise Exception(
+            except Exception as e:
+
+                ##############################################################################
+                ##############################################################################
+                ####
+                ####   Lazy Hack... 
+                ####
+                ##############################################################################
+                ##############################################################################
+
+                print(
+                    e, 
                     'Cannot load model parameters from checkpoint {}; '
                     'please ensure that the architectures match.'.format(filename)
                 )
-
+                try:
+                    print('!!! Training Continued Ignoring The Above Error !!!')
+                    self.get_model().load_state_dict(state['model'], strict=False)
+                    if utils.has_parameters(self.get_criterion()):
+                        self.get_criterion().load_state_dict(state['criterion'], strict=False)
+                except:
+                    raise Exception('version is %s'%(sys.version_info, ))
             extra_state = state['extra_state']
             self._optim_history = state['optimizer_history']
             last_optim_state = state.get('last_optimizer_state', None)
