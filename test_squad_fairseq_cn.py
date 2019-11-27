@@ -355,7 +355,7 @@ logger.setLevel(logging.INFO)
 import transformers
 from time import time
 
-roberta_single = transformers.BertForQuestionAnswering(transformers.modeling_bert.BertConfig.from_json_file("roberta.base.zh.wwm/config.json"))
+roberta_single = transformers.BertForQuestionAnswering(transformers.modeling_bert.BertConfig.from_json_file("roberta.large.zh.wwm/config.json"))
 
 states = torch.load(eval_model)
 
