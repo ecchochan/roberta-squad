@@ -944,8 +944,9 @@ def validate(args, trainer, task, epoch_itr, subsets):
         stats = get_valid_stats(trainer, args, extra_meters)
         for k, meter in extra_meters.items():
             stats[k] = meter.avg
+        print('**** VALID ****')
         progress.print(stats, tag=subset, step=trainer.get_num_updates())
-
+        print('**** VALID ****')
         valid_losses.append(
             stats[args.best_checkpoint_metric].avg
             if args.best_checkpoint_metric == 'loss'
@@ -1103,25 +1104,6 @@ import random
 from tqdm import tqdm
 import os
 
-
-
-# specially made for roberta
-from tokenizer.roberta import RobertaTokenizer, MASKED, NOT_MASKED, IS_MAX_CONTEXT, NOT_IS_MAX_CONTEXT
-from tokenizer.validate import validate
-
-
-
-roberta_directory = './roberta.large'
-
-
-max_seq_length   = 128
-max_query_length = 128
-doc_stride       = 128
-
-default_choices = []
-get_tokenizer = lambda: RobertaTokenizer(config_dir=roberta_directory)
-
-tk = tokenizer =  get_tokenizer()
 
 
 
