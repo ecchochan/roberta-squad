@@ -26,7 +26,7 @@ max_query_length = 128
 doc_stride       = 128
 merge_style      = 0
 
-default_choices = []
+default_choices = ['是','否']
 get_tokenizer = lambda: BertTokenizer(vocab_file)
 
 
