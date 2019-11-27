@@ -1107,7 +1107,7 @@ from tokenizer.validate import validate
 roberta_directory = './roberta.large'
 
 
-max_seq_length   = 256
+max_seq_length   = 128
 max_query_length = 128
 doc_stride       = 128
 
@@ -1147,7 +1147,6 @@ def pad(list_of_tokens,
         dtype=np.long,
         torch_tensor=None,
         pad_idx=1):
-    list_of_tokens = [e for e in list_of_tokens if len(e) <= max_seq_length]
     k = np.empty((len(list_of_tokens),max_seq_length), dtype=dtype)
     k.fill(pad_idx)
     i = 0
