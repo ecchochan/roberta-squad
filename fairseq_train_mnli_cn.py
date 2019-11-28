@@ -1299,7 +1299,7 @@ class MNLITask(FairseqTask):
         return cls(args)
 
 
-    def load_dataset(self, split, epoch=0, combine=False):
+    def load_dataset(self, split, epoch=0, combine=False, **kwargs):
         """Load a given dataset split.
         Args:
             split (str): name of the split (e.g., train, valid, test)
