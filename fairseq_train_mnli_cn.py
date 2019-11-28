@@ -383,10 +383,16 @@ class Trainer(object):
 
         return extra_state
 
-    def get_train_iterator(self, epoch, combine=True):
+    def get_train_iterator(self, epoch, combine=True, load_dataset=True, data_selector=None, shard_batch_itr=True):
         """Return an EpochBatchIterator over the training set for a given epoch."""
-        print('| loading train data for epoch {}'.format(epoch))
-        self.task.load_dataset(self.args.train_subset, epoch=epoch, combine=combine)
+        if load_dataset:
+            print('| loading train data for epoch {}'.format(epoch))
+            self.task.load_dataset(
+                self.args.train_subset,
+                epoch=epoch,
+                combine=combine,
+                data_selector=data_selector,
+            )
         return self.task.get_batch_iterator(
             dataset=self.task.dataset(self.args.train_subset),
             max_tokens=self.args.max_tokens,
@@ -398,8 +404,8 @@ class Trainer(object):
             ignore_invalid_inputs=True,
             required_batch_size_multiple=self.args.required_batch_size_multiple,
             seed=self.args.seed,
-            num_shards=self.args.distributed_world_size,
-            shard_id=self.args.distributed_rank,
+            num_shards=self.args.distributed_world_size if shard_batch_itr else 1,
+            shard_id=self.args.distributed_rank if shard_batch_itr else 0,
             num_workers=self.args.num_workers,
             epoch=epoch,
         )
