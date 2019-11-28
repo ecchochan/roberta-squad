@@ -122,7 +122,7 @@ def work(ss, debug=False):
                              default_choices = default_choices,
                              unique_index=unique_index,
                              is_training=is_training,
-                             add_Q="Q: " if lang == 'en' else '問: '
+                             add_Q="Q: " if lang == 'en' else '問: ',
                              merge_style=merge_style,
                              debug = debug
                            )
