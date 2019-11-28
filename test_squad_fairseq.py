@@ -347,8 +347,8 @@ eval_dir = sys.argv[2]
 
 from fairseq_train import RobertaQAModel
 from time import time
-roberta_directory = './roberta.large'
-roberta_single = RobertaQAModel.from_pretrained(roberta_directory, checkpoint_file=eval_model+'.pt', strict=True).model
+
+roberta_single = RobertaQAModel.from_pretrained(roberta_directory, checkpoint_file=eval_model, strict=True).model
 
 
 
