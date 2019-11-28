@@ -80,13 +80,13 @@ def char_anchors_to_tok_pos(r):
 
 def read(dat):
     uid, inp, start, end, p_mask, unanswerable = marshal.loads(dat)
-    inp = np.frombuffer(inp, dtype=np.uint16).astype(np.int32)
+    inp = np.frombuffer(inp, dtype=np.uint32).astype(np.int32)
     p_mask = np.frombuffer(p_mask, dtype=np.bool).astype(np.float32)
     return uid, inp, start, end, p_mask, unanswerable
 
 def fread(f):
     uid, inp, start, end, p_mask, unanswerable = marshal.load(f)
-    inp = np.frombuffer(inp, dtype=np.uint16).astype(np.int32)
+    inp = np.frombuffer(inp, dtype=np.uint32).astype(np.int32)
     p_mask = np.frombuffer(p_mask, dtype=np.bool).astype(np.float32)
     return uid, inp, start, end, p_mask, unanswerable
             
@@ -122,6 +122,7 @@ def work(ss, debug=False):
                              default_choices = default_choices,
                              unique_index=unique_index,
                              is_training=is_training,
+                             add_Q="Q: " if lang == 'en' else '問: '
                              merge_style=merge_style,
                              debug = debug
                            )
@@ -149,7 +150,7 @@ def work(ss, debug=False):
             record = marshal.dumps(
                 (
                 uid,
-                np.array(inp,dtype=np.uint16).tobytes(),
+                np.array(inp,dtype=np.uint32).tobytes(),
                 start_position,
                 end_position,
                 np.array(p_mask,dtype=np.bool).tobytes(),
@@ -611,3 +612,6 @@ try:
 finally:
   import code
   code.interact(local=locals())
+
+
+  list(prediction_by_qid.items())[0]
