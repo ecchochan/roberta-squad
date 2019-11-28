@@ -1088,25 +1088,14 @@ import os
 
 
 # specially made for roberta
-from tokenizer.roberta import RobertaTokenizer, MASKED, NOT_MASKED, IS_MAX_CONTEXT, NOT_IS_MAX_CONTEXT
-from tokenizer.validate import validate
-
 
 
 roberta_directory = './roberta.large'
 
 
-max_seq_length   = 256
+max_seq_length   = 128
 max_query_length = 128
 doc_stride       = 128
-
-default_choices = []
-get_tokenizer = lambda: RobertaTokenizer(config_dir=roberta_directory)
-
-tk = tokenizer =  get_tokenizer()
-
-
-
 
 
 
@@ -1135,8 +1124,7 @@ def fread(f):
 def pad(list_of_tokens, 
         dtype=np.long,
         torch_tensor=None,
-        pad_idx=1):
-    list_of_tokens = [e for e in list_of_tokens if len(e) <= max_seq_length]
+        pad_idx=0):
     k = np.empty((len(list_of_tokens),max_seq_length), dtype=dtype)
     k.fill(pad_idx)
     i = 0
