@@ -439,7 +439,7 @@ def evaluate(eval_dir):
     for e, rs in tqdm(batches):
       inp, p_mask, start, end, _ = e
       #(start_logits, end_logits, cls_logits), _ = roberta(inp.to(device=device))
-      start_logits, end_logits = roberta(inp.to(device=device))
+      start_logits, end_logits = roberta(inp.to(device=device), attention_mask=inp.ne(1).to(device=device))
       start_logits = start_logits.squeeze(-1)
       end_logits = end_logits.squeeze(-1)
 
