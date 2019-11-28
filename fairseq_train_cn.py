@@ -1459,6 +1459,10 @@ class SQuAD2Criterion_hf(FairseqCriterion):
             'nsentences': nsentences,
             'sample_size': sample_size,
         }
+        if len(logging_outputs) > 0 and 'ncorrect' in logging_outputs[0]:
+            ncorrect = sum(log.get('ncorrect', 0) for log in logging_outputs)
+            agg_output.update(accuracy=ncorrect/nsentences)
+
 
         return agg_output
         
