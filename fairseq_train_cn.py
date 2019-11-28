@@ -1091,7 +1091,7 @@ import os
 # specially made for roberta
 # from tokenizer.roberta import RobertaTokenizer, MASKED, NOT_MASKED, IS_MAX_CONTEXT, NOT_IS_MAX_CONTEXT
 from tokenizer.tokenization import BertTokenizer, translate_to_cn
-from tokenizer.validate import validate
+#from tokenizer.validate import validate
 
 
 
@@ -1324,7 +1324,7 @@ class SQuAD2Task(FairseqTask):
         Args:
             split (str): name of the split (e.g., train, valid, test)
         """
-        path = self.args.data
+        path = self.args.data + '_'+split
 
         tokens = []
         starts = []
@@ -1424,7 +1424,7 @@ class SQuAD2Criterion_hf(FairseqCriterion):
                                                        attention_mask=tokens.ne(1)
                                                        
                                                        )
-        start_logits = start_logits.squeeze(-1)
+        start_logits = start_logits.squeeze(-1) # B x T
         end_logits = end_logits.squeeze(-1)
 
         
@@ -1432,7 +1432,7 @@ class SQuAD2Criterion_hf(FairseqCriterion):
             if x is not None and x.dim() > 1:
                 x.squeeze_(-1)
 
-
+        
 
 
         sample_size = tokens.size(0) 
@@ -1441,6 +1441,7 @@ class SQuAD2Criterion_hf(FairseqCriterion):
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'sample_size': sample_size,
+            'ncorrect': (start_logits.argmax(1).view(-1) == start_positions.view(-1)).sum().item() + (end_logits.argmax(1).view(-1) == end_positions.view(-1)).sum().item(),
         }
         return total_loss, sample_size, logging_output
 
