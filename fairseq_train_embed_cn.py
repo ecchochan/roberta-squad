@@ -1098,7 +1098,6 @@ import os
 
 # specially made for roberta
 from tokenizer.roberta import RobertaTokenizer, MASKED, NOT_MASKED, IS_MAX_CONTEXT, NOT_IS_MAX_CONTEXT
-from tokenizer.validate import validate
 from tokenizer.tokenization import BertTokenizer, translate_to_cn, char_anchors_to_tok_pos
 
 vocab_file = 'roberta.large.zh.wwm/vocab.txt'
@@ -1222,6 +1221,8 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
 
         self.bert = transformers.BertModel(config)
 
+        self.dropout = nn.Dropout(0.1)
+
         self.q_fnn_layer = FnnLayer(config.hidden_size)
         self.a_fnn_layer = FnnLayer(config.hidden_size)
 
@@ -1251,7 +1252,7 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
     '''
     def get_pooled_output_average_tokens_from_last_layer(self, x):
         attention_mask = x.ne(0)
-        y = self.bert(x,attention_mask=attention_mask)[0]
+        y = self.dropout(self.bert(x,attention_mask=attention_mask)[0])
         ret = ( y * (attention_mask.unsqueeze(-1).type_as(y)) ).mean(1)
         #print(ret.shape, x.shape, y.shape) # torch.Size([32, 768]) torch.Size([32, 192]) torch.Size([32, 192, 768])
         return ret
@@ -1398,7 +1399,7 @@ class QAEmbedTask(FairseqTask):
         Args:
             split (str): name of the split (e.g., train, valid, test)
         """
-        path = self.args.data
+        path = self.args.data + '_' + split
 
         questions = []
         answers = []
