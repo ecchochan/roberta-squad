@@ -1106,8 +1106,8 @@ max_seq_length   = 192
 import marshal
 def read(dat):
     a, b = marshal.loads(dat)
-    a = np.frombuffer(a, dtype=np.uint16).astype(np.int32)
-    b = np.frombuffer(b, dtype=np.uint16).astype(np.int32)
+    a = np.frombuffer(a, dtype=np.uint32).astype(np.int32)
+    b = np.frombuffer(b, dtype=np.uint32).astype(np.int32)
     return a, b
 
 def fread(f):
@@ -1523,8 +1523,8 @@ class QAEmbedCriterion(FairseqCriterion):
 
     def forward(self, model, sample, reduce=True):
         # compute loss and accuracy
-        questions = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['questions']]
-        answers = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['answers']]
+        questions = [np.frombuffer(e, dtype=np.uint32).astype(np.int32) for e in sample['questions']]
+        answers = [np.frombuffer(e, dtype=np.uint32).astype(np.int32) for e in sample['answers']]
         
         questions = pad(questions,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in questions)).cuda()
         answers   = pad(answers,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in answers)).cuda()
