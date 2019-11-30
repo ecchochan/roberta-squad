@@ -1213,7 +1213,7 @@ class FnnLayer(nn.Module):
 
 from fairseq.models import BaseFairseqModel
 import transformers
-
+import random
 
 class BertForQAEmbed(transformers.BertPreTrainedModel):
     def __init__(self, config):
@@ -1266,10 +1266,10 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
 
         if has_q:
           q_embed = self.q_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(q))   # if average all tokens, needs : * 
-          #q_embed = q_embed / q_embed.norm(dim=1)[:,None]
+          q_embed = q_embed / q_embed.norm(dim=1)[:,None]
         if has_a:
           a_embed = self.a_fnn_layer(self.get_pooled_output_average_tokens_from_last_layer(a))
-          #a_embed = a_embed / a_embed.norm(dim=1)[:,None]
+          a_embed = a_embed / a_embed.norm(dim=1)[:,None]
 
         outputs = () 
 
@@ -1278,6 +1278,8 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
               raise Exception('Cannot calculate loss without both q and a')
             
             similarity_matrix = torch.mm(q_embed,a_embed.t())
+            if random.random() > 0.95:
+                print(similarity_matrix)
             
             targets = torch.arange(batch_size).cuda()   
             #print(q_embed.shape, a_embed.shape, similarity_matrix.shape, targets.shape)    # torch.Size([32, 768]) torch.Size([32, 768]) torch.Size([32, 32]) torch.Size([32])
