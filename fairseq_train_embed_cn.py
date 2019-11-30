@@ -1278,10 +1278,21 @@ class BertForQAEmbed(transformers.BertPreTrainedModel):
               raise Exception('Cannot calculate loss without both q and a')
             
             similarity_matrix = torch.mm(q_embed,a_embed.t())
+            targets = torch.arange(batch_size).cuda()   
             if random.random() > 0.95:
                 print(similarity_matrix)
+                print(torch.argmax(similarity_matrix, axis=1))
+                print(targets)
+                '''
+tensor([[ 0.9697, -0.1290, -0.0444,  ...,  0.1366, -0.0409, -0.0394],                           
+        [ 0.0045,  0.9531, -0.0994,  ...,  0.4238, -0.1447, -0.1321],
+        [-0.0454, -0.0862,  0.9785,  ...,  0.1003,  0.0332, -0.1099],       
+        ...,                        
+        [-0.0897,  0.5161, -0.1156,  ...,  0.9194,  0.0223, -0.1464],
+        [-0.1159, -0.0525, -0.1181,  ..., -0.0220,  0.9907, -0.1461],
+        [ 0.0515, -0.2925, -0.0895,  ..., -0.2209, -0.1671,  0.9653]],
+                '''
             
-            targets = torch.arange(batch_size).cuda()   
             #print(q_embed.shape, a_embed.shape, similarity_matrix.shape, targets.shape)    # torch.Size([32, 768]) torch.Size([32, 768]) torch.Size([32, 32]) torch.Size([32])
             loss = torch.nn.functional.cross_entropy(similarity_matrix, targets)
             
@@ -1472,9 +1483,6 @@ class QAEmbedCriterion(FairseqCriterion):
         # compute loss and accuracy
         questions = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['questions']]
         answers = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in sample['answers']]
-
-        print(''.join(tk.convert_ids_to_tokens(questions[0])))
-        print(''.join(tk.convert_ids_to_tokens(answers[0])))
 
         sample_size = len(questions)
         questions = pad(questions,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in questions)).cuda()
