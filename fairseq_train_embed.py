@@ -1464,7 +1464,7 @@ class QAEmbedTask(FairseqTask):
         Args:
             split (str): name of the split (e.g., train, valid, test)
         """
-        path = self.args.data
+        path = self.args.data + '_' + split
 
         questions = []
         answers = []
