@@ -139,7 +139,7 @@ eval_dir = sys.argv[2]
 
 from fairseq_train_embed import RobertaQAEmbedModel
 from time import time
-roberta_directory = "/".join(eval_model.split("/")[:-1])
+roberta_directory = "xlmr.base.v0"
 roberta_single = RobertaQAEmbedModel.from_pretrained(roberta_directory, checkpoint_file=eval_model, strict=True).model
 
 
