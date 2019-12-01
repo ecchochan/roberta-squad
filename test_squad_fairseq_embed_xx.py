@@ -37,8 +37,8 @@ tk = tokenizer =  get_tokenizer()
 import marshal
 def read(dat):
     a, b = marshal.loads(dat)
-    a = np.frombuffer(a, dtype=np.uint16).astype(np.int32)
-    b = np.frombuffer(b, dtype=np.uint16).astype(np.int32)
+    a = np.frombuffer(a, dtype=np.uint32).astype(np.int32)
+    b = np.frombuffer(b, dtype=np.uint32).astype(np.int32)
     return a, b
 
 def fread(f):
@@ -216,8 +216,8 @@ def evaluate(eval_dir):
   with torch.no_grad():
     with tqdm(batches) as t:
       for qs, ans in t:
-        q = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in qs]
-        a = [np.frombuffer(e, dtype=np.uint16).astype(np.int32) for e in ans]
+        q = [np.frombuffer(e, dtype=np.uint32).astype(np.int32) for e in qs]
+        a = [np.frombuffer(e, dtype=np.uint32).astype(np.int32) for e in ans]
         
         q = pad(q,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in q)).cuda()
         a = pad(a,dtype=np.long, torch_tensor=torch.LongTensor, max_seq_length=max(len(e) for e in a)).cuda()
