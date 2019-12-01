@@ -137,7 +137,7 @@ eval_model = sys.argv[1]
 eval_dir = sys.argv[2]
 
 
-from fairseq_train2 import RobertaQAEmbedModel
+from fairseq_train_embed import RobertaQAEmbedModel
 from time import time
 roberta_directory = "/".join(eval_model.split("/")[:-1])
 roberta_single = RobertaQAEmbedModel.from_pretrained(roberta_directory, checkpoint_file=eval_model, strict=True).model
