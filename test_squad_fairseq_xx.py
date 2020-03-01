@@ -38,7 +38,7 @@ elif lang == 'en':
 
 
 from tokenization import FairSeqSPTokenizer, char_anchors_to_tok_pos
-get_tokenizer = lambda: FairSeqSPTokenizer('xlmr.large.v0')
+get_tokenizer = lambda: FairSeqSPTokenizer('xlmr.large')
 
 tk = tokenizer =  get_tokenizer()
 
@@ -120,9 +120,11 @@ def work(ss, debug=False):
                              max_query_length = max_query_length,
                              doc_stride = doc_stride,
                              default_choices = default_choices,
+                             qc_sep = tokenizer.PIPE,
+                             cc_sep = tokenizer.PIPE,
                              unique_index=unique_index,
                              is_training=is_training,
-                             add_Q="Q: " if lang == 'en' else '問: ',
+                             add_Q="Q: ",
                              merge_style=merge_style,
                              debug = debug
                            )
